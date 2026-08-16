@@ -71,12 +71,13 @@ export function LoginPage() {
             <input
               {...register("email", { required: true })}
               type="email"
-              placeholder="admin@example.com"
+              placeholder="enter email"
               className="w-full rounded-xl border border-slate-200 px-3 py-2.5 outline-none focus:border-blue-500"
             />
-            <p className="mt-1 text-xs text-slate-500">
-              Try: admin@example.com, manager@example.com, or cashier@example.com
-            </p>
+            {/* <p className="mt-1 text-xs text-slate-500">
+              Try: admin@example.com, manager@example.com, or
+              cashier@example.com
+            </p> */}
           </div>
 
           <div>
@@ -89,9 +90,9 @@ export function LoginPage() {
               placeholder="••••••••"
               className="w-full rounded-xl border border-slate-200 px-3 py-2.5 outline-none focus:border-blue-500"
             />
-            <p className="mt-1 text-xs text-slate-500">
+            {/* <p className="mt-1 text-xs text-slate-500">
               Passwords: admin123, manager123, cashier123
-            </p>
+            </p> */}
           </div>
 
           {submitError ? (
@@ -100,17 +101,17 @@ export function LoginPage() {
             </div>
           ) : null}
 
-          <div className="rounded-2xl bg-blue-50 px-4 py-3 text-xs text-blue-700">
+          {/* <div className="rounded-2xl bg-blue-50 px-4 py-3 text-xs text-blue-700">
             <p className="font-semibold">Demo Credentials</p>
             <p className="mt-1">admin@example.com / admin123 → Full access</p>
             <p>manager@example.com / manager123 → Manager access</p>
             <p>cashier@example.com / cashier123 → Cashier access</p>
-          </div>
+          </div> */}
 
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full rounded-xl bg-slate-900 px-4 py-3 font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="cursor-pointer w-full rounded-xl bg-slate-900 px-4 py-3 font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isSubmitting ? "Signing in..." : "Sign In"}
           </button>
