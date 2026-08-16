@@ -2,12 +2,12 @@ import type { ReactNode } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
   BarChart3,
-  DollarSign,
   LogOut,
   Package,
   ReceiptText,
   RotateCcw,
   ShieldCheck,
+  ShoppingCart,
   Users,
 } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "../../../app/hooks";
@@ -30,7 +30,7 @@ const navItems: Array<{
   {
     to: "/sales",
     label: "Sales",
-    icon: DollarSign,
+    icon: ShoppingCart,
     roles: ["admin", "manager", "cashier"],
   },
   {

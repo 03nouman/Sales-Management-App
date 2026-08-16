@@ -9,13 +9,7 @@ import {
 import { useEffect, useState } from "react";
 import { useAppSelector } from "../../../app/hooks";
 import { salesService } from "../services/salesService";
-
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 2,
-  }).format(value);
+import { formatCurrency } from "../../../lib/currency";
 
 export function DashboardPage() {
   const { dashboard, products, orders, customers } = useAppSelector(
@@ -189,7 +183,7 @@ function StatCard({
         <span className="text-sm text-slate-500">{title}</span>
         <span className="rounded-full bg-slate-100 p-2">{icon}</span>
       </div>
-      <div className="flex items-end justify-between gap-3">
+      <div className="flex flex-col items-start justify-between gap-2">
         <p className="text-2xl font-bold text-slate-900">{value}</p>
         <span className="inline-flex items-center gap-1 text-sm font-medium text-emerald-600">
           <ArrowUpRight size={16} />

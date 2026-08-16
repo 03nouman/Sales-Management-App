@@ -2,6 +2,7 @@ import { useForm } from "react-hook-form";
 import { useMemo, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../../../app/hooks";
 import { addOrder, addTransaction, type SaleTransaction } from "../salesSlice";
+import { formatPrice } from "../../../lib/currency";
 
 type SaleFormValues = {
   customer: string;
@@ -264,13 +265,11 @@ export function SalesPage() {
                       .map((item) => `${item.name} x${item.qty}`)
                       .join(", ")}
                   </td>
-                  <td className="px-4 py-3">{txn.total.toLocaleString()}</td>
+                  <td className="px-4 py-3">{formatPrice(txn.total)}</td>
                   <td className="px-4 py-3">
-                    {txn.returnedValue.toLocaleString()}
+                    {formatPrice(txn.returnedValue)}
                   </td>
-                  <td className="px-4 py-3">
-                    {txn.settlement.toLocaleString()}
-                  </td>
+                  <td className="px-4 py-3">{formatPrice(txn.settlement)}</td>
                   <td className="px-4 py-3">
                     <span
                       className={`rounded-full px-2 py-1 text-xs font-medium ${txn.status === "Completed" ? "bg-emerald-100 text-emerald-700" : txn.status === "Partial" ? "bg-blue-100 text-blue-700" : "bg-amber-100 text-amber-700"}`}

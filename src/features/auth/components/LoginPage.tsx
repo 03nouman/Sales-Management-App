@@ -71,7 +71,7 @@ export function LoginPage() {
             <input
               {...register("email", { required: true })}
               type="email"
-              placeholder="enter email"
+              placeholder="Enter email"
               className="w-full rounded-xl border border-slate-200 px-3 py-2.5 outline-none focus:border-blue-500"
             />
             {/* <p className="mt-1 text-xs text-slate-500">

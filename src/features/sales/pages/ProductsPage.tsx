@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { useAppDispatch, useAppSelector } from "../../../app/hooks";
 import { salesService } from "../services/salesService";
 import { addProduct, type Product } from "../salesSlice";
+import { formatPrice } from "../../../lib/currency";
 
 type ProductFormValues = {
   name: string;
@@ -258,10 +259,8 @@ export function ProductsPage() {
                   <td className="px-4 py-3 text-slate-600">
                     {product.category}
                   </td>
-                  <td className="px-4 py-3">{product.cost.toLocaleString()}</td>
-                  <td className="px-4 py-3">
-                    {product.price.toLocaleString()}
-                  </td>
+                  <td className="px-4 py-3">{formatPrice(product.cost)}</td>
+                  <td className="px-4 py-3">{formatPrice(product.price)}</td>
                   <td className="px-4 py-3">{product.stock}</td>
                   <td className="px-4 py-3">
                     <span
