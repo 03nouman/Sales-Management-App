@@ -1,12 +1,16 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import type { Permission, Role } from "../permissions";
 
-type AuthUser = {
+export type AuthUser = {
+  id?: number;
   name: string;
-  role: string;
+  role: Role;
   branch: string;
+  permissions: Permission[];
+  token?: string;
 };
 
-type AuthState = {
+export type AuthState = {
   isAuthenticated: boolean;
   user: AuthUser | null;
 };
@@ -29,7 +33,11 @@ const getStoredAuth = (): AuthState => {
   }
 
   try {
-    return JSON.parse(stored) as AuthState;
+    const parsed = JSON.parse(stored) as AuthState;
+    return {
+      isAuthenticated: Boolean(parsed.isAuthenticated),
+      user: parsed.user ?? null,
+    };
   } catch {
     return {
       isAuthenticated: false,
@@ -54,6 +62,7 @@ const authSlice = createSlice({
           JSON.stringify({
             isAuthenticated: true,
             user: action.payload,
+            token: action.payload.token ?? "demo-token",
           }),
         );
       }

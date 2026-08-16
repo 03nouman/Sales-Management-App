@@ -1,5 +1,11 @@
+type LoginRequest = {
+  email?: string;
+  password?: string;
+  role?: "admin" | "manager" | "cashier";
+};
+
 export const authApi = {
-  login: async () => ({
+  login: async (_credentials?: LoginRequest) => ({
     user: {
       id: 1,
       name: "Owner",

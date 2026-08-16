@@ -1,9 +1,8 @@
 import { useForm } from "react-hook-form";
 import { Navigate, useNavigate } from "react-router-dom";
+import { rolePermissions, type Role } from "../permissions";
 import { loginSuccess } from "../state/authSlice";
 import { useAppDispatch, useAppSelector } from "../../../app/hooks";
-
-type Role = "admin" | "manager" | "cashier";
 
 type LoginForm = {
   email: string;
@@ -29,11 +28,16 @@ export function LoginPage() {
 
   const onSubmit = (data: LoginForm) => {
     const profile = roleProfiles[data.role];
+    const role = data.role;
+
     dispatch(
       loginSuccess({
+        id: undefined,
         name: profile.name,
-        role: data.role,
+        role,
         branch: profile.branch,
+        permissions: rolePermissions[role],
+        token: "demo-token",
       }),
     );
     navigate("/");

@@ -7,6 +7,12 @@ import {
 } from "react-router-dom";
 import { LoginPage } from "./features/auth/components/LoginPage";
 import { UnauthorizedPage } from "./features/auth/components/UnauthorizedPage";
+import {
+  normalizeRole,
+  rolePermissions,
+  type Permission,
+  type Role,
+} from "./features/auth/permissions";
 import { SalesLayout } from "./features/sales/components/SalesLayout";
 import { DashboardPage } from "./features/sales/pages/DashboardPage";
 import { ProductsPage } from "./features/sales/pages/ProductsPage";
@@ -15,16 +21,15 @@ import { ReturnsPage } from "./features/sales/pages/ReturnsPage";
 import { CustomersPage } from "./features/sales/pages/CustomersPage";
 import { SettingsPage } from "./features/sales/pages/SettingsPage";
 
-type Role = "admin" | "manager" | "cashier";
-
 type StoredAuth = {
   isAuthenticated: boolean;
   user: {
     role?: Role;
+    permissions?: Permission[];
   } | null;
 };
 
-const requireAuth = (allowedRoles?: Role[]) => () => {
+const requireAuth = (requiredPermissions?: Permission[]) => () => {
   if (typeof window === "undefined") {
     return redirect("/login");
   }
@@ -42,7 +47,16 @@ const requireAuth = (allowedRoles?: Role[]) => () => {
       return redirect("/login");
     }
 
-    if (allowedRoles && !allowedRoles.includes(auth.user.role as Role)) {
+    const normalizedRole = normalizeRole(auth.user.role);
+    const permissions =
+      auth.user.permissions ?? rolePermissions[normalizedRole];
+
+    if (
+      requiredPermissions &&
+      !requiredPermissions.every((permission) =>
+        permissions.includes(permission),
+      )
+    ) {
       return redirect("/unauthorized");
     }
 
@@ -55,10 +69,10 @@ const requireAuth = (allowedRoles?: Role[]) => () => {
 const withProtectedLayout = (
   path: string,
   Component: ComponentType,
-  allowedRoles: Role[],
+  requiredPermissions: Permission[],
 ) => ({
   path,
-  loader: requireAuth(allowedRoles),
+  loader: requireAuth(requiredPermissions),
   element: (
     <SalesLayout>
       <Component />
@@ -75,17 +89,13 @@ const router = createBrowserRouter([
     path: "/unauthorized",
     element: <UnauthorizedPage />,
   },
-  withProtectedLayout("/", DashboardPage, ["admin", "manager", "cashier"]),
-  withProtectedLayout("/sales", SalesPage, ["admin", "manager", "cashier"]),
-  withProtectedLayout("/products", ProductsPage, ["admin", "manager"]),
-  withProtectedLayout("/orders", SalesPage, ["admin", "manager", "cashier"]),
-  withProtectedLayout("/returns", ReturnsPage, ["admin", "manager", "cashier"]),
-  withProtectedLayout("/customers", CustomersPage, [
-    "admin",
-    "manager",
-    "cashier",
-  ]),
-  withProtectedLayout("/settings", SettingsPage, ["admin"]),
+  withProtectedLayout("/", DashboardPage, ["dashboard.view"]),
+  withProtectedLayout("/sales", SalesPage, ["sales.view"]),
+  withProtectedLayout("/products", ProductsPage, ["products.view"]),
+  withProtectedLayout("/orders", SalesPage, ["sales.view"]),
+  withProtectedLayout("/returns", ReturnsPage, ["returns.view"]),
+  withProtectedLayout("/customers", CustomersPage, ["customers.view"]),
+  withProtectedLayout("/settings", SettingsPage, ["settings.manage"]),
   {
     path: "*",
     element: <Navigate to="/" replace />,
