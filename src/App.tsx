@@ -20,13 +20,72 @@ const App = () => {
           <ProtectedRoute>
             <SalesLayout>
               <Routes>
-                <Route path="/" element={<DashboardPage />} />
-                <Route path="/sales" element={<SalesPage />} />
-                <Route path="/products" element={<ProductsPage />} />
-                <Route path="/orders" element={<SalesPage />} />
-                <Route path="/returns" element={<ReturnsPage />} />
-                <Route path="/customers" element={<CustomersPage />} />
-                <Route path="/settings" element={<SettingsPage />} />
+                <Route
+                  path="/"
+                  element={
+                    <ProtectedRoute
+                      allowedRoles={["admin", "manager", "cashier"]}
+                    >
+                      <DashboardPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/sales"
+                  element={
+                    <ProtectedRoute
+                      allowedRoles={["admin", "manager", "cashier"]}
+                    >
+                      <SalesPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/products"
+                  element={
+                    <ProtectedRoute allowedRoles={["admin", "manager"]}>
+                      <ProductsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/orders"
+                  element={
+                    <ProtectedRoute
+                      allowedRoles={["admin", "manager", "cashier"]}
+                    >
+                      <SalesPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/returns"
+                  element={
+                    <ProtectedRoute
+                      allowedRoles={["admin", "manager", "cashier"]}
+                    >
+                      <ReturnsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/customers"
+                  element={
+                    <ProtectedRoute
+                      allowedRoles={["admin", "manager", "cashier"]}
+                    >
+                      <CustomersPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/settings"
+                  element={
+                    <ProtectedRoute allowedRoles={["admin"]}>
+                      <SettingsPage />
+                    </ProtectedRoute>
+                  }
+                />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </SalesLayout>
