@@ -91,14 +91,14 @@ export function SalesLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900">
       <aside className="fixed left-0 top-0 flex h-full w-72 flex-col bg-slate-950 p-6 text-white">
-        <div className="mb-8">
+        <div className="mb-6 shrink-0">
           <p className="text-[10px] uppercase tracking-[0.35em] text-slate-400">
             Hardware Shop
           </p>
           <h1 className="mt-3 text-3xl font-black tracking-tight">SalesFlow</h1>
         </div>
 
-        <nav className="space-y-2">
+        <nav className="flex-1 space-y-2 overflow-y-auto pr-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           {visibleNavItems.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
@@ -118,20 +118,21 @@ export function SalesLayout({ children }: { children: ReactNode }) {
           ))}
         </nav>
 
-        <div className="mt-auto space-y-3">
-          <div className="rounded-2xl border border-slate-700 bg-slate-900/70 p-4">
-            <p className="text-xs uppercase tracking-[0.25em] text-slate-400">
-              Active User
-            </p>
-            <p className="mt-2 text-lg font-semibold">{user?.name ?? "User"}</p>
-            <div
-              className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${roleBadgeClasses[normalizedUserRole]}`}
+        <div className="mt-4 shrink-0 space-y-3 border-t border-slate-800 pt-4">
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-700 bg-slate-900/70 p-3">
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">
+                Logged in
+              </p>
+              <p className="truncate text-sm font-semibold text-white">
+                {user?.name ?? "User"}
+              </p>
+            </div>
+            <span
+              className={`inline-flex rounded-full px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.2em] ${roleBadgeClasses[normalizedUserRole]}`}
             >
               {roleLabel}
-            </div>
-            <p className="mt-2 text-sm text-slate-300">
-              {user?.branch ?? "Main Branch"}
-            </p>
+            </span>
           </div>
 
           <button
@@ -152,25 +153,20 @@ export function SalesLayout({ children }: { children: ReactNode }) {
               <p className="text-[10px] uppercase tracking-[0.3em] text-slate-500">
                 Dashboard
               </p>
-              <div className="mt-2 flex items-center gap-3">
-                <h2 className="text-2xl font-bold text-slate-900">
-                  {user?.name ?? "User"}
-                </h2>
-                <span
-                  className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${roleBadgeClasses[normalizedUserRole]}`}
-                >
-                  {roleLabel}
-                </span>
-              </div>
+              <h2 className="mt-2 text-2xl font-bold text-slate-900">
+                {user?.name ?? "User"}
+              </h2>
             </div>
 
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left sm:text-right">
-              <p className="text-[10px] uppercase tracking-[0.25em] text-slate-500">
-                Branch
-              </p>
-              <p className="mt-1 text-sm font-semibold text-slate-700">
-                {user?.branch ?? "Main Branch"}
-              </p>
+            <div className="flex items-center gap-3">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left sm:text-right">
+                <p className="text-[10px] uppercase tracking-[0.25em] text-slate-500">
+                  Branch
+                </p>
+                <p className="mt-1 text-sm font-semibold text-slate-700">
+                  {user?.branch ?? "Main Branch"}
+                </p>
+              </div>
             </div>
           </header>
 
