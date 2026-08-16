@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useAppDispatch, useAppSelector } from "../../../app/hooks";
+import { salesService } from "../services/salesService";
 import { addProduct, type Product } from "../salesSlice";
 
 type ProductFormValues = {
@@ -26,6 +27,45 @@ export function ProductsPage() {
   const products = useAppSelector((state) => state.sales.products);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadProducts = async () => {
+      try {
+        const response = await salesService.getProducts();
+        if (isActive) {
+          setError(null);
+          if (response.length > 0 && products.length === 0) {
+            response.forEach((item) => {
+              dispatch(
+                addProduct({
+                  ...item,
+                  status: item.stock <= 10 ? "Low Stock" : "In Stock",
+                }),
+              );
+            });
+          }
+        }
+      } catch {
+        if (isActive) {
+          setError("Unable to load products right now.");
+        }
+      } finally {
+        if (isActive) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadProducts();
+
+    return () => {
+      isActive = false;
+    };
+  }, [dispatch, products.length]);
 
   const { register, handleSubmit, reset } = useForm<ProductFormValues>({
     defaultValues: {
@@ -71,6 +111,16 @@ export function ProductsPage() {
             {products.length} total items
           </span>
         </div>
+
+        {error ? (
+          <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
+          </div>
+        ) : null}
+
+        {isLoading ? (
+          <div className="mb-5 h-24 animate-pulse rounded-2xl bg-slate-200" />
+        ) : null}
 
         <form
           onSubmit={handleSubmit(onSubmit)}

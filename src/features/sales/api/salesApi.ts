@@ -1,76 +1,88 @@
 export const salesApi = {
-  getDashboardStats: async () => ({
-    grossSales: 25480,
-    netSales: 23650,
-    returns: 820,
-    grossProfit: 9650,
-    returnExchangeImpact: 1420,
-  }),
-  getProducts: async () => [
-    {
-      id: 1,
-      name: "Aluminium Rod 12mm",
-      category: "Metal",
-      price: 220,
-      cost: 145,
-      stock: 48,
-      sku: "AL-12-001",
-    },
-    {
-      id: 2,
-      name: "Steel Plate 3mm",
-      category: "Steel",
-      price: 540,
-      cost: 388,
-      stock: 18,
-      sku: "ST-3-014",
-    },
-    {
-      id: 3,
-      name: "Nail Pack 50pcs",
-      category: "Fasteners",
-      price: 85,
-      cost: 54,
-      stock: 96,
-      sku: "NA-50-019",
-    },
-    {
-      id: 4,
-      name: "PVC Pipe 1 inch",
-      category: "Pipe",
-      price: 165,
-      cost: 112,
-      stock: 24,
-      sku: "PVC-1-088",
-    },
-  ],
-  getOrders: async () => [
-    {
-      id: "INV-1001",
-      customer: "Rahim Ahmed",
-      date: "2026-08-12",
-      total: 5000,
-      paid: 3500,
-      outstanding: 1500,
-      status: "Partial",
-    },
-    {
-      id: "INV-1002",
-      customer: "Nadia Hasan",
-      date: "2026-08-13",
-      total: 3200,
-      paid: 3200,
-      outstanding: 0,
-      status: "Paid",
-    },
-    {
-      id: "INV-1003",
-      customer: "Shahab Ali",
-      date: "2026-08-14",
-      total: 1800,
-      paid: 1200,
-      outstanding: 600,
-      status: "Partial",
-    },
-  ],
+  getDashboardStats: async () => {
+    await new Promise((resolve) => setTimeout(resolve, 400));
+
+    return {
+      grossSales: 25480,
+      netSales: 23650,
+      returns: 820,
+      grossProfit: 9650,
+      returnExchangeImpact: 1420,
+    };
+  },
+  getProducts: async () => {
+    await new Promise((resolve) => setTimeout(resolve, 400));
+
+    return [
+      {
+        id: 1,
+        name: "Aluminium Rod 12mm",
+        category: "Metal",
+        price: 220,
+        cost: 145,
+        stock: 48,
+        sku: "AL-12-001",
+      },
+      {
+        id: 2,
+        name: "Steel Plate 3mm",
+        category: "Steel",
+        price: 540,
+        cost: 388,
+        stock: 18,
+        sku: "ST-3-014",
+      },
+      {
+        id: 3,
+        name: "Nail Pack 50pcs",
+        category: "Fasteners",
+        price: 85,
+        cost: 54,
+        stock: 96,
+        sku: "NA-50-019",
+      },
+      {
+        id: 4,
+        name: "PVC Pipe 1 inch",
+        category: "Pipe",
+        price: 165,
+        cost: 112,
+        stock: 24,
+        sku: "PVC-1-088",
+      },
+    ];
+  },
+  getOrders: async () => {
+    await new Promise((resolve) => setTimeout(resolve, 400));
+
+    return [
+      {
+        id: "INV-1001",
+        customer: "Rahim Ahmed",
+        date: "2026-08-12",
+        total: 5000,
+        paid: 3500,
+        outstanding: 1500,
+        status: "Partial",
+      },
+      {
+        id: "INV-1002",
+        customer: "Nadia Hasan",
+        date: "2026-08-13",
+        total: 3200,
+        paid: 3200,
+        outstanding: 0,
+        status: "Paid",
+      },
+      {
+        id: "INV-1003",
+        customer: "Shahab Ali",
+        date: "2026-08-14",
+        total: 1800,
+        paid: 1200,
+        outstanding: 600,
+        status: "Partial",
+      },
+    ];
+  },
 };

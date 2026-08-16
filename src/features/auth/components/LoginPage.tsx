@@ -1,19 +1,13 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Navigate, useNavigate } from "react-router-dom";
-import { rolePermissions, type Role } from "../permissions";
+import { authService } from "../authService";
 import { loginSuccess } from "../state/authSlice";
 import { useAppDispatch, useAppSelector } from "../../../app/hooks";
 
 type LoginForm = {
   email: string;
   password: string;
-  role: Role;
-};
-
-const roleProfiles: Record<Role, { name: string; branch: string }> = {
-  admin: { name: "Owner", branch: "Main Branch" },
-  manager: { name: "Manager Ali", branch: "Warehouse Branch" },
-  cashier: { name: "Cashier Ayesha", branch: "Front Desk" },
 };
 
 export function LoginPage() {
@@ -21,26 +15,41 @@ export function LoginPage() {
   const navigate = useNavigate();
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
   const { register, handleSubmit } = useForm<LoginForm>();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   if (isAuthenticated) {
     return <Navigate to="/" replace />;
   }
 
-  const onSubmit = (data: LoginForm) => {
-    const profile = roleProfiles[data.role];
-    const role = data.role;
+  const onSubmit = async (data: LoginForm) => {
+    setSubmitError(null);
+    setIsSubmitting(true);
 
-    dispatch(
-      loginSuccess({
-        id: undefined,
-        name: profile.name,
-        role,
-        branch: profile.branch,
-        permissions: rolePermissions[role],
-        token: "demo-token",
-      }),
-    );
-    navigate("/");
+    try {
+      const response = await authService.login(data);
+
+      dispatch(
+        loginSuccess({
+          id: response.user.id,
+          name: response.user.name,
+          role: response.user.role,
+          branch: response.user.branch,
+          permissions: response.user.permissions,
+          token: response.token,
+        }),
+      );
+
+      navigate("/");
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : "Login failed. Please try again.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -61,8 +70,13 @@ export function LoginPage() {
             </label>
             <input
               {...register("email", { required: true })}
+              type="email"
+              placeholder="admin@example.com"
               className="w-full rounded-xl border border-slate-200 px-3 py-2.5 outline-none focus:border-blue-500"
             />
+            <p className="mt-1 text-xs text-slate-500">
+              Try: admin@example.com, manager@example.com, or cashier@example.com
+            </p>
           </div>
 
           <div>
@@ -72,29 +86,33 @@ export function LoginPage() {
             <input
               type="password"
               {...register("password", { required: true })}
+              placeholder="••••••••"
               className="w-full rounded-xl border border-slate-200 px-3 py-2.5 outline-none focus:border-blue-500"
             />
+            <p className="mt-1 text-xs text-slate-500">
+              Passwords: admin123, manager123, cashier123
+            </p>
           </div>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
-              Role
-            </label>
-            <select
-              {...register("role", { required: true })}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 outline-none focus:border-blue-500"
-            >
-              <option value="admin">Admin</option>
-              <option value="manager">Manager</option>
-              <option value="cashier">Cashier</option>
-            </select>
+          {submitError ? (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {submitError}
+            </div>
+          ) : null}
+
+          <div className="rounded-2xl bg-blue-50 px-4 py-3 text-xs text-blue-700">
+            <p className="font-semibold">Demo Credentials</p>
+            <p className="mt-1">admin@example.com / admin123 → Full access</p>
+            <p>manager@example.com / manager123 → Manager access</p>
+            <p>cashier@example.com / cashier123 → Cashier access</p>
           </div>
 
           <button
             type="submit"
-            className="w-full rounded-xl bg-slate-900 px-4 py-3 font-medium text-white hover:bg-slate-700"
+            disabled={isSubmitting}
+            className="w-full rounded-xl bg-slate-900 px-4 py-3 font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Sign In
+            {isSubmitting ? "Signing in..." : "Sign In"}
           </button>
         </form>
       </div>

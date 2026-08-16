@@ -6,7 +6,9 @@ import {
   TrendingUp,
   Users,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useAppSelector } from "../../../app/hooks";
+import { salesService } from "../services/salesService";
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("en-US", {
@@ -19,6 +21,39 @@ export function DashboardPage() {
   const { dashboard, products, orders, customers } = useAppSelector(
     (state) => state.sales,
   );
+  const [stats, setStats] = useState(dashboard);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadDashboard = async () => {
+      try {
+        const data = await salesService.getDashboardStats();
+        if (isActive) {
+          setStats(data);
+          setError(null);
+        }
+      } catch {
+        if (isActive) {
+          setError("Unable to load dashboard data. Please try again.");
+        }
+      } finally {
+        if (isActive) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadDashboard();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  const activeStats = stats ?? dashboard;
 
   return (
     <div className="space-y-6">
@@ -38,38 +73,55 @@ export function DashboardPage() {
         </div>
       </section>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        <StatCard
-          title="Gross Sales"
-          value={formatCurrency(dashboard.grossSales)}
-          change="+12.4%"
-          icon={<DollarSign className="text-emerald-500" />}
-        />
-        <StatCard
-          title="Net Sales"
-          value={formatCurrency(dashboard.netSales)}
-          change="+9.1%"
-          icon={<TrendingUp className="text-blue-500" />}
-        />
-        <StatCard
-          title="Returns"
-          value={formatCurrency(dashboard.returns)}
-          change="-2.4%"
-          icon={<CreditCard className="text-amber-500" />}
-        />
-        <StatCard
-          title="Gross Profit"
-          value={formatCurrency(dashboard.grossProfit)}
-          change="+18.5%"
-          icon={<Boxes className="text-violet-500" />}
-        />
-        <StatCard
-          title="Return Impact"
-          value={formatCurrency(dashboard.returnExchangeImpact)}
-          change="+6.2%"
-          icon={<Users className="text-pink-500" />}
-        />
-      </div>
+      {error ? (
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      ) : null}
+
+      {isLoading ? (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <div
+              key={index}
+              className="h-28 animate-pulse rounded-3xl bg-slate-200 ring-1 ring-slate-200"
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+          <StatCard
+            title="Gross Sales"
+            value={formatCurrency(activeStats.grossSales)}
+            change="+12.4%"
+            icon={<DollarSign className="text-emerald-500" />}
+          />
+          <StatCard
+            title="Net Sales"
+            value={formatCurrency(activeStats.netSales)}
+            change="+9.1%"
+            icon={<TrendingUp className="text-blue-500" />}
+          />
+          <StatCard
+            title="Returns"
+            value={formatCurrency(activeStats.returns)}
+            change="-2.4%"
+            icon={<CreditCard className="text-amber-500" />}
+          />
+          <StatCard
+            title="Gross Profit"
+            value={formatCurrency(activeStats.grossProfit)}
+            change="+18.5%"
+            icon={<Boxes className="text-violet-500" />}
+          />
+          <StatCard
+            title="Return Impact"
+            value={formatCurrency(activeStats.returnExchangeImpact)}
+            change="+6.2%"
+            icon={<Users className="text-pink-500" />}
+          />
+        </div>
+      )}
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
