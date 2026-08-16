@@ -1,6 +1,12 @@
-import { Navigate, Route, Routes } from "react-router-dom";
-import { ProtectedRoute } from "./features/auth/components/ProtectedRoute";
+import type { ComponentType } from "react";
+import {
+  createBrowserRouter,
+  Navigate,
+  redirect,
+  RouterProvider,
+} from "react-router-dom";
 import { LoginPage } from "./features/auth/components/LoginPage";
+import { UnauthorizedPage } from "./features/auth/components/UnauthorizedPage";
 import { SalesLayout } from "./features/sales/components/SalesLayout";
 import { DashboardPage } from "./features/sales/pages/DashboardPage";
 import { ProductsPage } from "./features/sales/pages/ProductsPage";
@@ -9,91 +15,85 @@ import { ReturnsPage } from "./features/sales/pages/ReturnsPage";
 import { CustomersPage } from "./features/sales/pages/CustomersPage";
 import { SettingsPage } from "./features/sales/pages/SettingsPage";
 
-const App = () => {
-  return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
+type Role = "admin" | "manager" | "cashier";
 
-      <Route
-        path="/*"
-        element={
-          <ProtectedRoute>
-            <SalesLayout>
-              <Routes>
-                <Route
-                  path="/"
-                  element={
-                    <ProtectedRoute
-                      allowedRoles={["admin", "manager", "cashier"]}
-                    >
-                      <DashboardPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/sales"
-                  element={
-                    <ProtectedRoute
-                      allowedRoles={["admin", "manager", "cashier"]}
-                    >
-                      <SalesPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/products"
-                  element={
-                    <ProtectedRoute allowedRoles={["admin", "manager"]}>
-                      <ProductsPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/orders"
-                  element={
-                    <ProtectedRoute
-                      allowedRoles={["admin", "manager", "cashier"]}
-                    >
-                      <SalesPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/returns"
-                  element={
-                    <ProtectedRoute
-                      allowedRoles={["admin", "manager", "cashier"]}
-                    >
-                      <ReturnsPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/customers"
-                  element={
-                    <ProtectedRoute
-                      allowedRoles={["admin", "manager", "cashier"]}
-                    >
-                      <CustomersPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/settings"
-                  element={
-                    <ProtectedRoute allowedRoles={["admin"]}>
-                      <SettingsPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </SalesLayout>
-          </ProtectedRoute>
-        }
-      />
-    </Routes>
-  );
+type StoredAuth = {
+  isAuthenticated: boolean;
+  user: {
+    role?: Role;
+  } | null;
+};
+
+const requireAuth = (allowedRoles?: Role[]) => () => {
+  if (typeof window === "undefined") {
+    return redirect("/login");
+  }
+
+  const stored = localStorage.getItem("salesflow-auth");
+
+  if (!stored) {
+    return redirect("/login");
+  }
+
+  try {
+    const auth = JSON.parse(stored) as StoredAuth;
+
+    if (!auth.isAuthenticated || !auth.user) {
+      return redirect("/login");
+    }
+
+    if (allowedRoles && !allowedRoles.includes(auth.user.role as Role)) {
+      return redirect("/unauthorized");
+    }
+
+    return null;
+  } catch {
+    return redirect("/login");
+  }
+};
+
+const withProtectedLayout = (
+  path: string,
+  Component: ComponentType,
+  allowedRoles: Role[],
+) => ({
+  path,
+  loader: requireAuth(allowedRoles),
+  element: (
+    <SalesLayout>
+      <Component />
+    </SalesLayout>
+  ),
+});
+
+const router = createBrowserRouter([
+  {
+    path: "/login",
+    element: <LoginPage />,
+  },
+  {
+    path: "/unauthorized",
+    element: <UnauthorizedPage />,
+  },
+  withProtectedLayout("/", DashboardPage, ["admin", "manager", "cashier"]),
+  withProtectedLayout("/sales", SalesPage, ["admin", "manager", "cashier"]),
+  withProtectedLayout("/products", ProductsPage, ["admin", "manager"]),
+  withProtectedLayout("/orders", SalesPage, ["admin", "manager", "cashier"]),
+  withProtectedLayout("/returns", ReturnsPage, ["admin", "manager", "cashier"]),
+  withProtectedLayout("/customers", CustomersPage, [
+    "admin",
+    "manager",
+    "cashier",
+  ]),
+  withProtectedLayout("/settings", SettingsPage, ["admin"]),
+  {
+    path: "*",
+    element: <Navigate to="/" replace />,
+  },
+]);
+
+const App = () => {
+  return <RouterProvider router={router} />;
 };
 
 export default App;
