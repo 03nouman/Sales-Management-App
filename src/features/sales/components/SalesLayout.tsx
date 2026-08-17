@@ -2,14 +2,19 @@ import type { ReactNode } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
   BarChart3,
+  Bell,
+  CircleHelp,
+  Grid2X2,
   LogOut,
   Package,
   ReceiptText,
   RotateCcw,
-  ShieldCheck,
+  Settings,
   ShoppingCart,
   Users,
+  Search,
 } from "lucide-react";
+
 import { useAppDispatch, useAppSelector } from "../../../app/hooks";
 import { logout } from "../../auth/state/authSlice";
 
@@ -24,25 +29,31 @@ const navItems: Array<{
   {
     to: "/",
     label: "Dashboard",
-    icon: BarChart3,
-    roles: ["admin", "manager", "cashier"],
-  },
-  {
-    to: "/sales",
-    label: "Sales",
-    icon: ShoppingCart,
+    icon: Grid2X2,
     roles: ["admin", "manager", "cashier"],
   },
   {
     to: "/products",
-    label: "Products",
+    label: "Inventory",
     icon: Package,
     roles: ["admin", "manager"],
   },
   {
+    to: "/sales",
+    label: "Sales",
+    icon: ReceiptText,
+    roles: ["admin", "manager", "cashier"],
+  },
+  {
     to: "/orders",
     label: "Orders",
-    icon: ReceiptText,
+    icon: ShoppingCart,
+    roles: ["admin", "manager", "cashier"],
+  },
+  {
+    to: "/customers",
+    label: "Customers",
+    icon: Users,
     roles: ["admin", "manager", "cashier"],
   },
   {
@@ -52,124 +63,179 @@ const navItems: Array<{
     roles: ["admin", "manager", "cashier"],
   },
   {
-    to: "/customers",
-    label: "Customers",
-    icon: Users,
-    roles: ["admin", "manager", "cashier"],
+    to: "/reports",
+    label: "Reports",
+    icon: BarChart3,
+    roles: ["admin", "manager"],
   },
-  { to: "/settings", label: "Settings", icon: ShieldCheck, roles: ["admin"] },
+  {
+    to: "/settings",
+    label: "Settings",
+    icon: Settings,
+    roles: ["admin"],
+  },
 ];
-
-const roleBadgeClasses: Record<Role, string> = {
-  admin: "bg-blue-600 text-blue-50",
-  manager: "bg-amber-500 text-amber-50",
-  cashier: "bg-emerald-600 text-emerald-50",
-};
 
 export function SalesLayout({ children }: { children: ReactNode }) {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const user = useAppSelector((state) => state.auth.user);
-  const userRole = user?.role ?? "cashier";
 
-  const handleLogout = () => {
-    dispatch(logout());
-    navigate("/login");
-  };
+  const user = useAppSelector((state) => state.auth.user);
+
+  const userRole = user?.role ?? "cashier";
 
   const normalizedUserRole: Role =
     userRole === "admin" || userRole === "manager" || userRole === "cashier"
       ? userRole
       : "cashier";
 
-  const roleLabel = normalizedUserRole.toUpperCase();
-
   const visibleNavItems = navItems.filter((item) =>
     item.roles.includes(normalizedUserRole),
   );
 
+  const handleLogout = () => {
+    dispatch(logout());
+    navigate("/login");
+  };
+
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900">
-      <aside className="fixed left-0 top-0 flex h-full w-72 flex-col bg-slate-950 p-6 text-white">
-        <div className="mb-6 shrink-0">
-          <p className="text-[10px] uppercase tracking-[0.35em] text-slate-400">
-            Hardware Shop
+    <div className="min-h-screen bg-[#f8f7fc] text-slate-900">
+      {/* =====================================================
+          SIDEBAR
+      ====================================================== */}
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[230px] border-r border-[#e4e1ec] bg-[#faf9fd] lg:flex lg:flex-col">
+        {/* Logo */}
+        <div className="shrink-0 border-b border-[#e8e5ef] px-6 py-5">
+          <h1 className="text-[24px] font-extrabold tracking-tight text-[#263c93]">
+            HardwarePro
+          </h1>
+
+          <p className="mt-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
+            Warehouse Admin
           </p>
-          <h1 className="mt-3 text-3xl font-black tracking-tight">SalesFlow</h1>
         </div>
 
-        <nav className="flex-1 space-y-2 overflow-y-auto pr-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-          {visibleNavItems.map(({ to, label, icon: Icon }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={to === "/"}
-              className={({ isActive }) =>
-                `flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition ${
-                  isActive
-                    ? "bg-white text-slate-950 shadow-lg"
-                    : "text-slate-300 hover:bg-white/5 hover:text-white"
-                }`
-              }
-            >
-              <Icon size={18} />
-              {label}
-            </NavLink>
-          ))}
-        </nav>
+        {/* =================================================
+            SCROLLABLE NAVIGATION
+        ================================================== */}
+        <div className="min-h-0 flex-1 overflow-y-auto px-3 py-7 [scrollbar-width:thin] [scrollbar-color:#d5d2df_transparent]">
+          <nav className="space-y-1.5">
+            {visibleNavItems.map(({ to, label, icon: Icon }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={to === "/"}
+                className={({ isActive }) =>
+                  [
+                    "group relative flex items-center gap-3 rounded-xl",
+                    "px-4 py-3",
+                    "text-[13px] font-medium",
+                    "transition-all duration-200",
+                    isActive
+                      ? "bg-[#eef0ff] font-semibold text-[#263c93]"
+                      : "text-slate-600 hover:bg-[#f0eef7] hover:text-slate-900",
+                  ].join(" ")
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    {isActive && (
+                      <span className="absolute right-0 top-1/2 h-[65%] w-[3px] -translate-y-1/2 rounded-l-full bg-[#263c93]" />
+                    )}
 
-        <div className="mt-4 shrink-0 space-y-3 border-t border-slate-800 pt-4">
-          <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-700 bg-slate-900/70 p-3">
-            <div className="min-w-0">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">
-                Logged in
-              </p>
-              <p className="truncate text-sm font-semibold text-white">
-                {user?.name ?? "User"}
-              </p>
-            </div>
-            <span
-              className={`inline-flex rounded-full px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.2em] ${roleBadgeClasses[normalizedUserRole]}`}
-            >
-              {roleLabel}
-            </span>
-          </div>
+                    <Icon
+                      size={18}
+                      strokeWidth={isActive ? 2.2 : 1.8}
+                      className={
+                        isActive
+                          ? "text-[#263c93]"
+                          : "text-slate-500 group-hover:text-slate-800"
+                      }
+                    />
+
+                    <span>{label}</span>
+                  </>
+                )}
+              </NavLink>
+            ))}
+          </nav>
+        </div>
+
+        {/* =================================================
+            BOTTOM UTILITY AREA
+
+            Settings intentionally removed here because it
+            already exists in the main navigation.
+        ================================================== */}
+        <div className="shrink-0 border-t border-[#e8e5ef] px-3 py-4">
+          <button
+            type="button"
+            className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-[13px] font-medium text-slate-600 transition hover:bg-[#f0eef7] hover:text-slate-900"
+          >
+            <CircleHelp size={18} strokeWidth={1.8} />
+            Support
+          </button>
 
           <button
             type="button"
             onClick={handleLogout}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm font-medium text-slate-200 transition hover:bg-slate-700"
+            className="mt-1 flex w-full items-center gap-3 rounded-xl px-4 py-3 text-[13px] font-medium text-slate-600 transition hover:bg-red-50 hover:text-red-600"
           >
-            <LogOut size={16} />
+            <LogOut size={18} strokeWidth={1.8} />
             Logout
           </button>
         </div>
       </aside>
 
-      <main className="ml-72 p-6 lg:p-8">
-        <div className="mx-auto max-w-7xl">
-          <header className="mb-6 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-[10px] uppercase tracking-[0.3em] text-slate-500">
-                Dashboard
-              </p>
-              <h2 className="mt-2 text-2xl font-bold text-slate-900">
-                {user?.name ?? "User"}
-              </h2>
-            </div>
+      {/* =====================================================
+          MAIN CONTENT
+      ====================================================== */}
+      <main className="min-h-screen lg:ml-[230px]">
+        {/* =================================================
+            TOP HEADER
+        ================================================== */}
+        <header className="sticky top-0 z-30 flex min-h-[68px] items-center justify-between border-b border-[#e5e2ed] bg-[#faf9fd]/95 px-5 backdrop-blur sm:px-7">
+          {/* Search */}
+          <div className="flex h-10 w-full max-w-[410px] items-center rounded-xl border border-[#ddd9e8] bg-[#f2f0f8] px-3.5">
+            <Search
+              size={17}
+              strokeWidth={1.8}
+              className="shrink-0 text-[#52618e]"
+            />
 
-            <div className="flex items-center gap-3">
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left sm:text-right">
-                <p className="text-[10px] uppercase tracking-[0.25em] text-slate-500">
-                  Branch
-                </p>
-                <p className="mt-1 text-sm font-semibold text-slate-700">
-                  {user?.branch ?? "Main Branch"}
-                </p>
-              </div>
-            </div>
-          </header>
+            <input
+              type="text"
+              placeholder="Search inventory, orders..."
+              className="h-full w-full bg-transparent px-2.5 text-[13px] text-slate-700 outline-none placeholder:text-slate-500"
+            />
+          </div>
 
+          {/* Header actions */}
+          <div className="ml-5 flex items-center gap-5">
+            <button
+              type="button"
+              className="relative text-slate-600 transition hover:text-slate-900"
+            >
+              <Bell size={20} strokeWidth={1.8} />
+
+              <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border border-white bg-red-500" />
+            </button>
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              title={`Logout ${user?.name ?? "User"}`}
+              className="grid h-9 w-9 place-items-center rounded-full border border-[#ccd4e8] bg-[#e7ecf8] text-sm font-bold text-[#263c93] transition hover:ring-2 hover:ring-[#d8dcfa]"
+            >
+              {user?.name?.charAt(0)?.toUpperCase() ?? "U"}
+            </button>
+          </div>
+        </header>
+
+        {/* =================================================
+            PAGE CONTENT
+        ================================================== */}
+        <div className="mx-auto w-full max-w-[1800px] p-5 sm:p-6 xl:p-8">
           {children}
         </div>
       </main>
