@@ -16,10 +16,10 @@ import {
 import { Layout } from "./features/sales/ui/components/Layout";
 import { DashboardPage } from "./features/sales/ui/pages/DashboardPage";
 import { SalesPage } from "./features/sales/ui/pages/SalesPage";
-import { ProductsPage } from "./features/sales/ui/pages/ProductsPage";
 import { ReturnsPage } from "./features/sales/ui/pages/ReturnsPage";
 import { CustomersPage } from "./features/sales/ui/pages/CustomersPage";
 import { SettingsPage } from "./features/sales/ui/pages/SettingsPage";
+import { ProductsPage } from "./features/products/ui/pages/ProductsPage";
 
 type StoredAuth = {
   isAuthenticated: boolean;

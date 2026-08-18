@@ -1,5 +1,7 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
+export type ProductStatus = "In Stock" | "Low Stock" | "Out of Stock";
+
 export type Product = {
   id: number;
   name: string;
@@ -8,7 +10,7 @@ export type Product = {
   cost: number;
   stock: number;
   sku: string;
-  status: "In Stock" | "Low Stock";
+  status: ProductStatus;
 };
 
 export type OrderStatus =
