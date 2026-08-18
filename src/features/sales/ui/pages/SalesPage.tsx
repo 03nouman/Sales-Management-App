@@ -1,8 +1,12 @@
 import { useForm } from "react-hook-form";
 import { useMemo, useState } from "react";
-import { useAppDispatch, useAppSelector } from "../../../app/hooks";
-import { addOrder, addTransaction, type SaleTransaction } from "../salesSlice";
-import { formatPrice } from "../../../lib/currency";
+import { useAppDispatch, useAppSelector } from "../../../../app/hooks";
+import {
+  addOrder,
+  addTransaction,
+  type SaleTransaction,
+} from "../../salesSlice";
+import { formatPrice } from "../../../../lib/currency";
 
 type SaleFormValues = {
   customer: string;

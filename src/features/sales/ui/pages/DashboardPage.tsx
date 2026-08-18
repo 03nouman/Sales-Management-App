@@ -10,9 +10,9 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { useAppSelector } from "../../../app/hooks";
-import { salesService } from "../services/salesService";
-import { formatCurrency } from "../../../lib/currency";
+import { useAppSelector } from "../../../../app/hooks";
+import { salesService } from "../../services/salesService";
+import { formatCurrency } from "../../../../lib/currency";
 
 export function DashboardPage() {
   const { dashboard, products, orders, customers } = useAppSelector(
@@ -82,7 +82,7 @@ export function DashboardPage() {
           ))}
         </div>
       ) : (
-        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-5 grid-cols-2 lg:grid-cols-4">
           {/* Total Sales */}
           <DashboardStatCard
             title="Total Sales"

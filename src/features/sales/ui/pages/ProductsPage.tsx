@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
-import { useAppDispatch, useAppSelector } from "../../../app/hooks";
-import { salesService } from "../services/salesService";
-import { addProduct, type Product } from "../salesSlice";
-import { formatPrice } from "../../../lib/currency";
+import { useAppDispatch, useAppSelector } from "../../../../app/hooks";
+import { salesService } from "../../services/salesService";
+import { addProduct, type Product } from "../../salesSlice";
+import { formatPrice } from "../../../../lib/currency";
 
 type ProductFormValues = {
   name: string;

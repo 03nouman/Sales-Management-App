@@ -13,13 +13,13 @@ import {
   type Permission,
   type Role,
 } from "./features/auth/permissions";
-import { SalesLayout } from "./features/sales/components/SalesLayout";
-import { DashboardPage } from "./features/sales/pages/DashboardPage";
-import { ProductsPage } from "./features/sales/pages/ProductsPage";
-import { SalesPage } from "./features/sales/pages/SalesPage";
-import { ReturnsPage } from "./features/sales/pages/ReturnsPage";
-import { CustomersPage } from "./features/sales/pages/CustomersPage";
-import { SettingsPage } from "./features/sales/pages/SettingsPage";
+import { Layout } from "./features/sales/ui/components/Layout";
+import { DashboardPage } from "./features/sales/ui/pages/DashboardPage";
+import { SalesPage } from "./features/sales/ui/pages/SalesPage";
+import { ProductsPage } from "./features/sales/ui/pages/ProductsPage";
+import { ReturnsPage } from "./features/sales/ui/pages/ReturnsPage";
+import { CustomersPage } from "./features/sales/ui/pages/CustomersPage";
+import { SettingsPage } from "./features/sales/ui/pages/SettingsPage";
 
 type StoredAuth = {
   isAuthenticated: boolean;
@@ -74,9 +74,9 @@ const withProtectedLayout = (
   path,
   loader: requireAuth(requiredPermissions),
   element: (
-    <SalesLayout>
+    <Layout>
       <Component />
-    </SalesLayout>
+    </Layout>
   ),
 });
 

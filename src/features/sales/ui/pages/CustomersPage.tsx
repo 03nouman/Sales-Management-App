@@ -1,4 +1,4 @@
-import { useAppSelector } from "../../../app/hooks";
+import { useAppSelector } from "../../../../app/hooks";
 
 export function CustomersPage() {
   const customers = useAppSelector((state) => state.sales.customers);
