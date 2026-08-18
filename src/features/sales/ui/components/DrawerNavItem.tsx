@@ -1,13 +1,15 @@
 import { NavLink } from "react-router-dom";
 import type { NavItem } from "../../types/layout";
 
-const DrawerNavItem = ({
-  item,
-  onNavigate,
-}: {
+type DrawerNavItemProps = {
   item: NavItem;
   onNavigate: () => void;
-}) => {
+};
+
+export default function DrawerNavItem({
+  item,
+  onNavigate,
+}: DrawerNavItemProps) {
   const { to, label, icon: Icon } = item;
 
   return (
@@ -21,6 +23,7 @@ const DrawerNavItem = ({
           "rounded-xl px-4 py-3.5",
           "text-[14px] font-medium",
           "transition-all duration-200",
+
           isActive
             ? "bg-[#eef0ff] font-semibold text-[#263c93]"
             : "text-slate-600 hover:bg-[#f0eef7] hover:text-slate-900",
@@ -59,6 +62,4 @@ const DrawerNavItem = ({
       )}
     </NavLink>
   );
-};
-
-export default DrawerNavItem;
+}

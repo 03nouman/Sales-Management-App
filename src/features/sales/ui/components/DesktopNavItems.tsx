@@ -1,7 +1,12 @@
 import { NavLink } from "react-router-dom";
 import type { NavItem } from "../../types/layout";
 
-const DesktopNavItem = ({ item }: { item: NavItem }) => {
+
+type DesktopNavItemProps = {
+  item: NavItem;
+};
+
+export default function DesktopNavItem({ item }: DesktopNavItemProps) {
   const { to, label, icon: Icon } = item;
 
   return (
@@ -14,6 +19,7 @@ const DesktopNavItem = ({ item }: { item: NavItem }) => {
           "rounded-xl px-4 py-3",
           "text-[13px] font-medium",
           "transition-all duration-200",
+
           isActive
             ? "bg-[#eef0ff] font-semibold text-[#263c93]"
             : "text-slate-600 hover:bg-[#f0eef7] hover:text-slate-900",
@@ -52,6 +58,4 @@ const DesktopNavItem = ({ item }: { item: NavItem }) => {
       )}
     </NavLink>
   );
-};
-
-export default DesktopNavItem;
+}
