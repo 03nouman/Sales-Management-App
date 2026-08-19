@@ -5,7 +5,6 @@ import { OrdersHeader } from "../components/OrdersHeader";
 import { OrdersList } from "../components/OrdersList";
 import { OrdersToolbar } from "../components/OrdersToolbar";
 
-
 export function OrdersPage() {
   const orders = useOrders();
 
@@ -22,12 +21,12 @@ export function OrdersPage() {
 
       <OrdersList
         orders={orders.filteredOrders}
-        onViewOrder={orders.setSelectedOrder}
+        onViewOrder={(order) => orders.openOrderDetails(order.id)}
       />
 
       <OrderDetailsModal
         order={orders.selectedOrder}
-        onClose={() => orders.setSelectedOrder(null)}
+        onClose={orders.closeOrderDetails}
       />
 
       <CreateOrderModal

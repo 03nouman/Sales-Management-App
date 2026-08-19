@@ -1,7 +1,8 @@
-import type { UseFormReturn } from "react-hook-form";
+import type { SubmitHandler, UseFormReturn } from "react-hook-form";
 import { formatPrice } from "../../../../../lib/currency";
-import type { CreateOrderFormValues, OrderItem, PaymentStatus } from "../../../types/order.types";
+import type { OrderItem, PaymentStatus } from "../../../types/order.types";
 import { SelectedProducts } from "./SelectedProducts";
+import type { CreateOrderFormValues } from "../../../hooks/useCreateOrder";
 
 type Product = {
   id: number;
@@ -175,7 +176,7 @@ export function OrderItemsStep({
         <button
           type="button"
           disabled={selectedItems.length === 0}
-          onClick={onSubmit}
+          onClick={() => onSubmit}
           className="rounded-xl bg-[#263c93] px-5 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
         >
           Create Order

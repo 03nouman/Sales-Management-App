@@ -28,31 +28,22 @@ export type OrderItem = {
 export type Order = {
   id: number;
   orderNumber: string;
-
   customerId: number;
   customerName: string;
   customerPhone: string;
-
   items: OrderItem[];
-
   subtotal: number;
   discount: number;
   tax: number;
   total: number;
-
   paidAmount: number;
   remainingAmount: number;
-
   paymentStatus: PaymentStatus;
   paymentType: PaymentType;
-
   orderStatus: OrderStatus;
   orderType: OrderType;
-
   billingAddress: string;
-
   createdAt: string;
-
   deliveryDate: string;
   deliveryTime: string;
 };

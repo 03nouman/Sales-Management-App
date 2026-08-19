@@ -83,30 +83,19 @@ export function useOrders() {
 
   return {
     orders,
-
     filteredOrders,
-
     selectedOrder,
-
     stats,
-
     isLoading,
-
     isUpdating,
-
     error,
-
     search,
     setSearch,
-
     status,
     setStatus,
-
     isCreateOrderOpen,
-
     openCreateOrder,
     closeCreateOrder,
-
     openOrderDetails,
     closeOrderDetails,
   };
