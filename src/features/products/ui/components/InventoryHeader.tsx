@@ -9,6 +9,8 @@ export default function InventoryHeader({
   totalProducts,
   onAddProduct,
 }: InventoryHeaderProps) {
+  console.log(totalProducts);
+  
   return (
     <header
       className="

@@ -1,10 +1,6 @@
 import type { ReactNode } from "react";
-
 import { useAppSelector } from "../../../../app/hooks";
 import { useLayoutHooks } from "../../hooks/useNavigations";
-import { getVisibleNavigation, normalizeRole } from "../../utils/helpers";
-import { desktopNavItems, mobileNavItems } from "../../constants/navItems";
-
 import DesktopSidebar from "./DesktopSidebar";
 import MobileDrawer from "./MobileDrawer";
 import MainContent from "./MainContent";
