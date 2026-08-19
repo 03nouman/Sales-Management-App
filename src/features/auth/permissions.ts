@@ -4,6 +4,8 @@ export type Permission =
   | "dashboard.view"
   | "sales.view"
   | "sales.create"
+  | "orders.view"
+  | "orders.create"
   | "products.view"
   | "products.manage"
   | "customers.view"
@@ -14,7 +16,8 @@ export const rolePermissions: Record<Role, Permission[]> = {
   admin: [
     "dashboard.view",
     "sales.view",
-    "sales.create",
+    "orders.view",
+    "orders.create",
     "products.view",
     "products.manage",
     "customers.view",
@@ -24,7 +27,8 @@ export const rolePermissions: Record<Role, Permission[]> = {
   manager: [
     "dashboard.view",
     "sales.view",
-    "sales.create",
+    "orders.view",
+    "orders.create",
     "products.view",
     "products.manage",
     "customers.view",
@@ -33,7 +37,8 @@ export const rolePermissions: Record<Role, Permission[]> = {
   cashier: [
     "dashboard.view",
     "sales.view",
-    "sales.create",
+    "orders.view",
+    "orders.create",
     "customers.view",
     "returns.view",
   ],

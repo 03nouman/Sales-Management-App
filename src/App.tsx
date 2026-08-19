@@ -20,6 +20,7 @@ import { ReturnsPage } from "./features/sales/ui/pages/ReturnsPage";
 import { CustomersPage } from "./features/sales/ui/pages/CustomersPage";
 import { SettingsPage } from "./features/sales/ui/pages/SettingsPage";
 import { ProductsPage } from "./features/products/ui/pages/ProductsPage";
+import { OrdersPage } from "./features/orders/ui/pages/OrdersPage";
 
 type StoredAuth = {
   isAuthenticated: boolean;
@@ -92,7 +93,7 @@ const router = createBrowserRouter([
   withProtectedLayout("/", DashboardPage, ["dashboard.view"]),
   withProtectedLayout("/sales", SalesPage, ["sales.view"]),
   withProtectedLayout("/products", ProductsPage, ["products.view"]),
-  withProtectedLayout("/orders", SalesPage, ["sales.view"]),
+  withProtectedLayout("/orders", OrdersPage, ["orders.view"]),
   withProtectedLayout("/returns", ReturnsPage, ["returns.view"]),
   withProtectedLayout("/customers", CustomersPage, ["customers.view"]),
   withProtectedLayout("/settings", SettingsPage, ["settings.manage"]),
