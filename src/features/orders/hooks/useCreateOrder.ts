@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-
 import { useForm, type SubmitHandler } from "react-hook-form";
-
-import { useAppDispatch } from "../../../app/hooks";
-
+import { useAppDispatch, useAppSelector } from "../../../app/hooks";
 import { addOrderLocal } from "../state/ordersSlice";
+import { fetchProducts } from "../../products/state/productsSlice";
+import { fetchCustomers } from "../../customers/state/customerSlice";
 
 import type {
   OrderItem,
@@ -20,33 +19,17 @@ import {
   generateOrderNumber,
 } from "../utils/orderHelpers";
 
-import {
-    productsApi,
-  type Product,
-} from "../../products/api/productsApi";
-
-import {
-  customersService,
-  type Customer,
-} from "../../customers/api/customersApi";
-
 /* =========================================================
    FORM TYPE
 ========================================================= */
 
 export type CreateOrderFormValues = {
   customerId: number | null;
-
   deliveryDate: string;
-
   deliveryTime: string;
-
   paymentType: PaymentType;
-
   paidAmount: number;
-
   billingAddress: string;
-
   orderType: "Delivery" | "Pickup";
 };
 
@@ -58,16 +41,24 @@ export function useCreateOrder(onClose: () => void) {
   const dispatch = useAppDispatch();
 
   /* =======================================================
-     CATALOG DATA
+     PRODUCTS FROM REDUX
   ======================================================= */
 
-  const [products, setProducts] = useState<Product[]>([]);
+  const products = useAppSelector((state) => state.products.products);
 
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const productsLoading = useAppSelector((state) => state.products.isLoading);
 
-  const [isCatalogLoading, setIsCatalogLoading] = useState(true);
+  const productsError = useAppSelector((state) => state.products.error);
 
-  const [catalogError, setCatalogError] = useState<string | null>(null);
+  /* =======================================================
+     CUSTOMERS FROM REDUX
+  ======================================================= */
+
+  const customers = useAppSelector((state) => state.customers.customers);
+
+  const customersLoading = useAppSelector((state) => state.customers.isLoading);
+
+  const customersError = useAppSelector((state) => state.customers.error);
 
   /* =======================================================
      STEP
@@ -76,7 +67,7 @@ export function useCreateOrder(onClose: () => void) {
   const [step, setStep] = useState<1 | 2>(1);
 
   /* =======================================================
-     SELECTED ITEMS
+     SELECTED ORDER ITEMS
   ======================================================= */
 
   const [selectedItems, setSelectedItems] = useState<OrderItem[]>([]);
@@ -88,20 +79,18 @@ export function useCreateOrder(onClose: () => void) {
   const form = useForm<CreateOrderFormValues>({
     defaultValues: {
       customerId: null,
-
       deliveryDate: "",
-
       deliveryTime: "",
-
       paymentType: "Cash",
-
       paidAmount: 0,
-
       billingAddress: "",
-
       orderType: "Delivery",
     },
   });
+
+  /* =======================================================
+     WATCH FORM VALUES
+  ======================================================= */
 
   const selectedCustomerId = form.watch("customerId");
 
@@ -112,49 +101,39 @@ export function useCreateOrder(onClose: () => void) {
   ======================================================= */
 
   useEffect(() => {
-    let isActive = true;
+    /*
+     * Products:
+     *
+     * fetchProducts()
+     *      ↓
+     * productsApi
+     *      ↓
+     * productsSlice
+     *      ↓
+     * Redux
+     *
+     * Customers:
+     *
+     * fetchCustomers()
+     *      ↓
+     * customersApi
+     *      ↓
+     * customersSlice
+     *      ↓
+     * Redux
+     */
 
-    async function loadCatalog() {
-      try {
-        setIsCatalogLoading(true);
+    dispatch(fetchProducts());
+    dispatch(fetchCustomers());
+  }, [dispatch]);
 
-        setCatalogError(null);
+  /* =======================================================
+     CATALOG STATE
+  ======================================================= */
 
-        const [productResponse, customerResponse] = await Promise.all([
-          productsApi.getProducts(),
-          customersService.getCustomers(),
-        ]);
+  const isCatalogLoading = productsLoading || customersLoading;
 
-        if (!isActive) {
-          return;
-        }
-
-        setProducts(productResponse);
-
-        setCustomers(customerResponse);
-      } catch (error) {
-        if (!isActive) {
-          return;
-        }
-
-        setCatalogError(
-          error instanceof Error
-            ? error.message
-            : "Unable to load products and customers.",
-        );
-      } finally {
-        if (isActive) {
-          setIsCatalogLoading(false);
-        }
-      }
-    }
-
-    loadCatalog();
-
-    return () => {
-      isActive = false;
-    };
-  }, []);
+  const catalogError = productsError || customersError;
 
   /* =======================================================
      SELECTED CUSTOMER
@@ -178,13 +157,9 @@ export function useCreateOrder(onClose: () => void) {
   );
 
   const discount = 0;
-
   const tax = 0;
-
   const total = subtotal - discount + tax;
-
   const remainingAmount = calculateRemainingAmount(total, paidAmount);
-
   const paymentStatus = calculatePaymentStatus(total, paidAmount);
 
   /* =======================================================
@@ -200,6 +175,10 @@ export function useCreateOrder(onClose: () => void) {
       return;
     }
 
+    /*
+     * Do not allow an out-of-stock product to be added.
+     */
+
     if (product.stock <= 0) {
       return;
     }
@@ -207,7 +186,15 @@ export function useCreateOrder(onClose: () => void) {
     setSelectedItems((current) => {
       const existing = current.find((item) => item.productId === product.id);
 
+      /*
+       * Product already exists in order.
+       */
+
       if (existing) {
+        /*
+         * Do not allow quantity to exceed stock.
+         */
+
         if (existing.quantity >= product.stock) {
           return current;
         }
@@ -218,30 +205,27 @@ export function useCreateOrder(onClose: () => void) {
           item.productId === product.id
             ? {
                 ...item,
-
                 quantity,
-
                 total: calculateItemTotal(item.price, quantity),
               }
             : item,
         );
       }
 
+      /*
+       * Add new product to order.
+       */
+
       return [
         ...current,
 
         {
           productId: product.id,
-
           productName: product.name,
-
           sku: product.sku,
-
           quantity: 1,
-
           price: product.price,
-
-          total: product.price,
+          total: calculateItemTotal(product.price, 1),
         },
       ];
     });
@@ -252,7 +236,9 @@ export function useCreateOrder(onClose: () => void) {
   ======================================================= */
 
   const increaseQuantity = (productId: number) => {
-    const product = products.find((item) => item.id === productId);
+    const product = products.find(
+      (item) => Number(item.id) === Number(productId),
+    );
 
     if (!product) {
       return;
@@ -264,6 +250,10 @@ export function useCreateOrder(onClose: () => void) {
           return item;
         }
 
+        /*
+         * Do not exceed available stock.
+         */
+
         if (item.quantity >= product.stock) {
           return item;
         }
@@ -272,9 +262,7 @@ export function useCreateOrder(onClose: () => void) {
 
         return {
           ...item,
-
           quantity,
-
           total: calculateItemTotal(item.price, quantity),
         };
       }),
@@ -297,9 +285,7 @@ export function useCreateOrder(onClose: () => void) {
 
           return {
             ...item,
-
             quantity,
-
             total: calculateItemTotal(item.price, quantity),
           };
         })
@@ -348,9 +334,17 @@ export function useCreateOrder(onClose: () => void) {
   ======================================================= */
 
   const submitOrder: SubmitHandler<CreateOrderFormValues> = async (data) => {
+    /*
+     * Customer must exist.
+     */
+
     if (!selectedCustomer) {
       return;
     }
+
+    /*
+     * At least one product must be selected.
+     */
 
     if (selectedItems.length === 0) {
       return;
@@ -358,67 +352,46 @@ export function useCreateOrder(onClose: () => void) {
 
     const payload: CreateOrderPayload = {
       customerId: Number(selectedCustomer.id),
-
       customerName: selectedCustomer.name,
-
       customerPhone: selectedCustomer.phone,
-
       items: selectedItems,
-
       subtotal,
-
       discount,
-
       tax,
-
       total,
-
       paidAmount,
-
       remainingAmount,
-
       paymentStatus,
-
       paymentType: data.paymentType,
-
       orderStatus: "Pending",
-
       orderType: data.orderType,
-
       billingAddress: data.billingAddress,
-
       deliveryDate: data.deliveryDate,
-
       deliveryTime: data.deliveryTime,
     };
 
-    /*
-     * -----------------------------------------------------
-     * DEMO MODE
-     * -----------------------------------------------------
-     *
-     * Until backend API is connected, use local Redux
-     * action.
-     *
-     * When backend is ready, replace this with:
-     *
-     * await dispatch(
-     *   createOrder(payload)
-     * ).unwrap();
-     */
+    /* =====================================================
+       DEMO MODE
+    =====================================================
+
+       Backend order creation is not being used yet.
+
+       For now we create the order locally and store it
+       inside ordersSlice.
+
+       Later this can become:
+
+       dispatch(createOrder(payload)).unwrap();
+
+    ===================================================== */
 
     const localOrder = {
       id: Date.now(),
-
       orderNumber: generateOrderNumber(),
-
       ...payload,
-
       createdAt: new Date().toISOString(),
     };
-
     dispatch(addOrderLocal(localOrder));
-
     resetForm();
   };
 
@@ -428,59 +401,46 @@ export function useCreateOrder(onClose: () => void) {
 
   const resetForm = () => {
     form.reset();
-
     setSelectedItems([]);
-
     setStep(1);
-
     onClose();
   };
 
+  /* =======================================================
+     RETURN
+  ======================================================= */
+
   return {
+    /* Form */
     form,
-
+    /* Steps */
     step,
-
+    /* Catalog */
     products,
-
     customers,
-
     selectedCustomer,
-
-    selectedItems,
-
     isCatalogLoading,
-
     catalogError,
-
+    /* Selected items */
+    selectedItems,
+    /* Calculations */
     subtotal,
-
     discount,
-
     tax,
-
     total,
-
     paidAmount,
-
     remainingAmount,
-
     paymentStatus,
-
+    /* Product actions */
     addItem,
-
     increaseQuantity,
-
     decreaseQuantity,
-
     removeItem,
-
+    /* Navigation */
     goToItemsStep,
-
     goBack,
-
+    /* Order */
     submitOrder,
-
     resetForm,
   };
 }

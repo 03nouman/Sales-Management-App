@@ -1,15 +1,4 @@
-export type ProductStatus = "In Stock" | "Low Stock" | "Out of Stock";
-
-export type Product = {
-  id: number;
-  name: string;
-  category: string;
-  sku: string;
-  cost: number;
-  price: number;
-  stock: number;
-  status: ProductStatus;
-};
+import type { Product } from "../types/product.type";
 
 const PRODUCTS_API_URL = "/api/products";
 
@@ -18,9 +7,14 @@ async function parseResponse<T>(response: Response): Promise<T> {
     let message = "Unable to load products.";
 
     try {
-      const data = await response.json();
+      const data: unknown = await response.json();
 
-      if (data?.message) {
+      if (
+        typeof data === "object" &&
+        data !== null &&
+        "message" in data &&
+        typeof data.message === "string"
+      ) {
         message = data.message;
       }
     } catch {
@@ -30,7 +24,7 @@ async function parseResponse<T>(response: Response): Promise<T> {
     throw new Error(message);
   }
 
-  return response.json();
+  return response.json() as Promise<T>;
 }
 
 export const productsApi = {
