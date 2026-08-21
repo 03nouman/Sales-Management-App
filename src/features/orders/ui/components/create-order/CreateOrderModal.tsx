@@ -47,7 +47,7 @@ export function CreateOrderModal({ isOpen, onClose }: Props) {
         "
       >
         {/* =================================================
-            MODAL HEADER
+            HEADER
         ================================================== */}
 
         <header
@@ -75,7 +75,14 @@ export function CreateOrderModal({ isOpen, onClose }: Props) {
               Step {order.step} of 2
             </p>
 
-            <h2 className="mt-1 text-lg font-bold text-slate-900">
+            <h2
+              className="
+                mt-1
+                text-lg
+                font-bold
+                text-slate-900
+              "
+            >
               Create New Order
             </h2>
           </div>
@@ -103,7 +110,14 @@ export function CreateOrderModal({ isOpen, onClose }: Props) {
             CONTENT
         ================================================== */}
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-5">
+        <div
+          className="
+            min-h-0
+            flex-1
+            overflow-y-auto
+            p-5
+          "
+        >
           {/* =================================================
               CATALOG ERROR
           ================================================== */}
@@ -136,8 +150,8 @@ export function CreateOrderModal({ isOpen, onClose }: Props) {
               customers={order.customers}
               selectedCustomer={order.selectedCustomer}
               customerMode={order.customerMode}
-              isCreatingCustomer={order.isCreatingCustomer}
-              onCustomerModeChange={order.changeCustomerMode}
+              onModeChange={order.switchCustomerMode}
+              onSelectCustomer={order.selectCustomer}
               onCreateCustomer={order.createCustomer}
               onNext={order.goToItemsStep}
             />
@@ -147,23 +161,23 @@ export function CreateOrderModal({ isOpen, onClose }: Props) {
               STEP 2
           ================================================== */}
 
-          {order.step === 2 &&
-            // <OrderItemsStep
-            //   form={order.form}
-            //   products={order.products}
-            //   selectedItems={order.selectedItems}
-            //   subtotal={order.subtotal}
-            //   total={order.total}
-            //   remainingAmount={order.remainingAmount}
-            //   paymentStatus={order.paymentStatus}
-            //   onAddProduct={order.addItem}
-            //   onIncrease={order.increaseQuantity}
-            //   onDecrease={order.decreaseQuantity}
-            //   onRemove={order.removeItem}
-            //   onBack={order.goBack}
-            //   onSubmit={order.submitOrder}
-            // />
-            "order"}
+          {order.step === 2 && (
+            <OrderItemsStep
+              form={order.form}
+              products={order.products}
+              selectedItems={order.selectedItems}
+              subtotal={order.subtotal}
+              total={order.total}
+              remainingAmount={order.remainingAmount}
+              paymentStatus={order.paymentStatus}
+              onAddProduct={order.addItem}
+              onIncrease={order.increaseQuantity}
+              onDecrease={order.decreaseQuantity}
+              onRemove={order.removeItem}
+              onBack={order.goBack}
+              onSubmit={order.submitOrder}
+            />
+          )}
         </div>
       </div>
     </div>

@@ -1,13 +1,13 @@
-import { useState } from "react";
-import { UserPlus, UserRound } from "lucide-react";
 import type { UseFormReturn } from "react-hook-form";
 
 import type { CreateOrderFormValues } from "../../../hooks/useCreateOrder";
 
-import type {
-  Customer,
-  CreateCustomerPayload,
-} from "../../../../customers/types/customer.types";
+import type { Customer } from "../../../../customers/types/customer.types";
+
+import type { CustomerMode } from "../../../hooks/useCreateOrder";
+import { useEffect } from "react";
+import { useAppDispatch } from "../../../../../app/hooks";
+import { loadLocalCustomers } from "../../../../customers/state/customerSlice";
 
 type Props = {
   form: UseFormReturn<CreateOrderFormValues>;
@@ -16,249 +16,185 @@ type Props = {
 
   selectedCustomer: Customer | null;
 
-  customerMode: "existing" | "new";
+  customerMode: CustomerMode;
 
-  isCreatingCustomer: boolean;
+  onModeChange: (mode: CustomerMode) => void;
 
-  onCustomerModeChange: (mode: "existing" | "new") => void;
+  onSelectCustomer: (customerId: number | null) => void;
 
-  onCreateCustomer: (data: CreateCustomerPayload) => Customer | null;
+  onCreateCustomer: () => Customer | null;
 
   onNext: () => void;
 };
 
 export function CustomerStep({
   form,
-
   customers,
-
   selectedCustomer,
-
   customerMode,
-
-  isCreatingCustomer,
-
-  onCustomerModeChange,
-
+  onModeChange,
+  onSelectCustomer,
   onCreateCustomer,
-
   onNext,
 }: Props) {
-  const [newCustomer, setNewCustomer] = useState<CreateCustomerPayload>({
-    name: "",
-
-    phone: "",
-
-    email: "",
-
-    address: "",
-
-    tier: "Regular",
-  });
-
-  const [newCustomerError, setNewCustomerError] = useState<string | null>(null);
+  let dispatch = useAppDispatch();
+  const newCustomerName = form.watch("newCustomerName");
+  const newCustomerPhone = form.watch("newCustomerPhone");
 
   /* =======================================================
      CREATE CUSTOMER
   ======================================================= */
 
   const handleCreateCustomer = () => {
-    setNewCustomerError(null);
+    const customer = onCreateCustomer();
 
-    const name = newCustomer.name.trim();
-
-    const phone = newCustomer.phone.trim();
-
-    if (!name) {
-      setNewCustomerError("Customer name is required.");
-
-      return;
-    }
-
-    if (!phone) {
-      setNewCustomerError("Phone number is required.");
-
-      return;
-    }
-
-    const existingPhone = customers.some(
-      (customer) => customer.phone.trim() === phone,
-    );
-
-    if (existingPhone) {
-      setNewCustomerError("A customer with this phone number already exists.");
-
-      return;
-    }
-
-    const created = onCreateCustomer({
-      ...newCustomer,
-
-      name,
-
-      phone,
-    });
-
-    if (created) {
-      setNewCustomer({
-        name: "",
-
-        phone: "",
-
-        email: "",
-
-        address: "",
-
-        tier: "Regular",
+    if (!customer) {
+      /*
+       * Validation is handled below through
+       * the form fields.
+       */
+      form.setError("newCustomerName", {
+        type: "manual",
+        message: "Customer name and phone are required.",
       });
+
+      return;
     }
+
+    form.clearErrors(["newCustomerName", "newCustomerPhone"]);
   };
 
+  /* =======================================================
+     CONTINUE
+  ======================================================= */
+
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    onNext();
+  };
+  useEffect(() => {
+    dispatch(loadLocalCustomers());
+  }, []);
   return (
-    <div className="space-y-5">
-      {/* ===================================================
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* =================================================
           HEADER
-      =================================================== */}
+      ================================================== */}
 
       <section>
-        <h3 className="text-base font-bold text-slate-900">Select Customer</h3>
+        <h3
+          className="
+            text-base
+            font-bold
+            text-slate-900
+          "
+        >
+          Customer
+        </h3>
 
-        <p className="mt-1 text-xs text-slate-500">
+        <p
+          className="
+            mt-1
+            text-xs
+            text-slate-500
+          "
+        >
           Select an existing customer or create a new customer for this order.
         </p>
       </section>
 
-      {/* ===================================================
-          CUSTOMER MODE
-      =================================================== */}
+      {/* =================================================
+          CUSTOMER MODE SWITCH
+      ================================================== */}
 
-      <div className="grid grid-cols-2 gap-3">
+      <div
+        className="
+          inline-flex
+          rounded-xl
+          border
+          border-slate-200
+          bg-slate-50
+          p-1
+        "
+      >
         <button
           type="button"
-          onClick={() => onCustomerModeChange("existing")}
+          onClick={() => onModeChange("existing")}
           className={`
-            flex
-            items-center
-            gap-3
-            rounded-xl
-            border
-            p-4
-            text-left
+            rounded-lg
+            px-4
+            py-2
+            text-xs
+            font-semibold
             transition
             ${
               customerMode === "existing"
-                ? "border-[#263c93] bg-[#f6f7ff]"
-                : "border-slate-200 bg-white hover:border-slate-300"
+                ? "bg-white text-[#263c93] shadow-sm"
+                : "text-slate-500 hover:text-slate-700"
             }
           `}
         >
-          <span
-            className={`
-              grid
-              h-9
-              w-9
-              shrink-0
-              place-items-center
-              rounded-lg
-              ${
-                customerMode === "existing"
-                  ? "bg-[#263c93] text-white"
-                  : "bg-slate-100 text-slate-500"
-              }
-            `}
-          >
-            <UserRound size={17} />
-          </span>
-
-          <span>
-            <span className="block text-sm font-semibold text-slate-900">
-              Existing Customer
-            </span>
-
-            <span className="mt-0.5 block text-[11px] text-slate-500">
-              Select from customer list
-            </span>
-          </span>
+          Existing Customer
         </button>
 
         <button
           type="button"
-          onClick={() => onCustomerModeChange("new")}
+          onClick={() => onModeChange("new")}
           className={`
-            flex
-            items-center
-            gap-3
-            rounded-xl
-            border
-            p-4
-            text-left
+            rounded-lg
+            px-4
+            py-2
+            text-xs
+            font-semibold
             transition
             ${
               customerMode === "new"
-                ? "border-[#263c93] bg-[#f6f7ff]"
-                : "border-slate-200 bg-white hover:border-slate-300"
+                ? "bg-white text-[#263c93] shadow-sm"
+                : "text-slate-500 hover:text-slate-700"
             }
           `}
         >
-          <span
-            className={`
-              grid
-              h-9
-              w-9
-              shrink-0
-              place-items-center
-              rounded-lg
-              ${
-                customerMode === "new"
-                  ? "bg-[#263c93] text-white"
-                  : "bg-slate-100 text-slate-500"
-              }
-            `}
-          >
-            <UserPlus size={17} />
-          </span>
-
-          <span>
-            <span className="block text-sm font-semibold text-slate-900">
-              New Customer
-            </span>
-
-            <span className="mt-0.5 block text-[11px] text-slate-500">
-              Create a new customer
-            </span>
-          </span>
+          New Customer
         </button>
       </div>
 
-      {/* ===================================================
+      {/* =================================================
           EXISTING CUSTOMER
-      =================================================== */}
+      ================================================== */}
 
       {customerMode === "existing" && (
-        <form onSubmit={form.handleSubmit(onNext)} className="space-y-5">
-          <div>
+        <section
+          className="
+            rounded-xl
+            border
+            border-slate-200
+            bg-white
+            p-4
+          "
+        >
+          <div className="max-w-xl">
             <label
               htmlFor="customerId"
-              className="mb-1.5 block text-xs font-semibold text-slate-700"
+              className="
+                mb-1.5
+                block
+                text-xs
+                font-semibold
+                text-slate-700
+              "
             >
               Customer
             </label>
 
             <select
               id="customerId"
-              {...form.register("customerId", {
-                required: "Please select a customer",
+              value={selectedCustomer?.id ?? ""}
+              onChange={(event) => {
+                const value = event.target.value;
 
-                setValueAs: (value) => {
-                  if (value === "") {
-                    return null;
-                  }
-
-                  const parsedValue = Number(value);
-
-                  return Number.isNaN(parsedValue) ? null : parsedValue;
-                },
-              })}
+                onSelectCustomer(value ? Number(value) : null);
+              }}
               className="
                 h-11
                 w-full
@@ -280,275 +216,421 @@ export function CustomerStep({
               {customers.map((customer) => (
                 <option key={customer.id} value={customer.id}>
                   {customer.name}
-
                   {customer.phone ? ` — ${customer.phone}` : ""}
                 </option>
               ))}
             </select>
 
-            {form.formState.errors.customerId && (
-              <p className="mt-1.5 text-xs text-red-500">
-                {form.formState.errors.customerId.message}
+            {!selectedCustomer && (
+              <p
+                className="
+                  mt-1.5
+                  text-xs
+                  text-slate-400
+                "
+              >
+                Select a customer to continue.
               </p>
             )}
           </div>
 
-          {/* =============================================
+          {/* =================================================
               SELECTED CUSTOMER
-          ============================================== */}
+          ================================================== */}
 
           {selectedCustomer && <CustomerPreview customer={selectedCustomer} />}
-
-          {/* =============================================
-              ACTION
-          ============================================== */}
-
-          <div className="flex justify-end border-t border-slate-100 pt-4">
-            <button
-              type="submit"
-              disabled={!selectedCustomer}
-              className="
-                rounded-xl
-                bg-[#263c93]
-                px-5
-                py-2.5
-                text-sm
-                font-semibold
-                text-white
-                transition
-                hover:bg-[#1f317d]
-                disabled:cursor-not-allowed
-                disabled:opacity-40
-              "
-            >
-              Continue
-            </button>
-          </div>
-        </form>
-      )}
-
-      {/* ===================================================
-          NEW CUSTOMER
-      =================================================== */}
-
-      {customerMode === "new" && (
-        <section className="space-y-5">
-          <div className="grid gap-4 sm:grid-cols-2">
-            {/* NAME */}
-
-            <div>
-              <label className="mb-1.5 block text-xs font-semibold text-slate-700">
-                Customer Name
-              </label>
-
-              <input
-                type="text"
-                value={newCustomer.name}
-                onChange={(event) =>
-                  setNewCustomer((current) => ({
-                    ...current,
-                    name: event.target.value,
-                  }))
-                }
-                placeholder="Enter customer name"
-                className="
-                  h-11
-                  w-full
-                  rounded-xl
-                  border
-                  border-slate-200
-                  px-3
-                  text-sm
-                  outline-none
-                  focus:border-[#263c93]
-                  focus:ring-2
-                  focus:ring-[#263c93]/10
-                "
-              />
-            </div>
-
-            {/* PHONE */}
-
-            <div>
-              <label className="mb-1.5 block text-xs font-semibold text-slate-700">
-                Phone Number
-              </label>
-
-              <input
-                type="tel"
-                value={newCustomer.phone}
-                onChange={(event) =>
-                  setNewCustomer((current) => ({
-                    ...current,
-                    phone: event.target.value,
-                  }))
-                }
-                placeholder="Enter phone number"
-                className="
-                  h-11
-                  w-full
-                  rounded-xl
-                  border
-                  border-slate-200
-                  px-3
-                  text-sm
-                  outline-none
-                  focus:border-[#263c93]
-                  focus:ring-2
-                  focus:ring-[#263c93]/10
-                "
-              />
-            </div>
-
-            {/* EMAIL */}
-
-            <div>
-              <label className="mb-1.5 block text-xs font-semibold text-slate-700">
-                Email
-                <span className="ml-1 font-normal text-slate-400">
-                  (Optional)
-                </span>
-              </label>
-
-              <input
-                type="email"
-                value={newCustomer.email ?? ""}
-                onChange={(event) =>
-                  setNewCustomer((current) => ({
-                    ...current,
-                    email: event.target.value,
-                  }))
-                }
-                placeholder="customer@example.com"
-                className="
-                  h-11
-                  w-full
-                  rounded-xl
-                  border
-                  border-slate-200
-                  px-3
-                  text-sm
-                  outline-none
-                  focus:border-[#263c93]
-                  focus:ring-2
-                  focus:ring-[#263c93]/10
-                "
-              />
-            </div>
-
-            {/* TIER */}
-
-            <div>
-              <label className="mb-1.5 block text-xs font-semibold text-slate-700">
-                Customer Tier
-              </label>
-
-              <select
-                value={newCustomer.tier ?? "Regular"}
-                onChange={(event) =>
-                  setNewCustomer((current) => ({
-                    ...current,
-
-                    tier: event.target.value as "Regular" | "Silver" | "Gold",
-                  }))
-                }
-                className="
-                  h-11
-                  w-full
-                  rounded-xl
-                  border
-                  border-slate-200
-                  bg-white
-                  px-3
-                  text-sm
-                  outline-none
-                  focus:border-[#263c93]
-                  focus:ring-2
-                  focus:ring-[#263c93]/10
-                "
-              >
-                <option value="Regular">Regular</option>
-
-                <option value="Silver">Silver</option>
-
-                <option value="Gold">Gold</option>
-              </select>
-            </div>
-          </div>
-
-          {/* ADDRESS */}
-
-          <div>
-            <label className="mb-1.5 block text-xs font-semibold text-slate-700">
-              Address
-              <span className="ml-1 font-normal text-slate-400">
-                (Optional)
-              </span>
-            </label>
-
-            <textarea
-              value={newCustomer.address ?? ""}
-              onChange={(event) =>
-                setNewCustomer((current) => ({
-                  ...current,
-
-                  address: event.target.value,
-                }))
-              }
-              placeholder="Enter customer address"
-              rows={3}
-              className="
-                w-full
-                resize-none
-                rounded-xl
-                border
-                border-slate-200
-                px-3
-                py-2.5
-                text-sm
-                outline-none
-                focus:border-[#263c93]
-                focus:ring-2
-                focus:ring-[#263c93]/10
-              "
-            />
-          </div>
-
-          {/* ERROR */}
-
-          {newCustomerError && (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-600">
-              {newCustomerError}
-            </div>
-          )}
-
-          {/* ACTIONS */}
-
-          <div className="flex justify-end border-t border-slate-100 pt-4">
-            <button
-              type="button"
-              onClick={handleCreateCustomer}
-              disabled={isCreatingCustomer}
-              className="
-                rounded-xl
-                bg-[#263c93]
-                px-5
-                py-2.5
-                text-sm
-                font-semibold
-                text-white
-                transition
-                hover:bg-[#1f317d]
-                disabled:cursor-not-allowed
-                disabled:opacity-50
-              "
-            >
-              {isCreatingCustomer ? "Creating..." : "Create & Continue"}
-            </button>
-          </div>
         </section>
       )}
-    </div>
+
+      {/* =================================================
+          NEW CUSTOMER
+      ================================================== */}
+
+      {customerMode === "new" && (
+        <section
+          className="
+            rounded-xl
+            border
+            border-slate-200
+            bg-white
+            p-4
+          "
+        >
+          {/* -----------------------------------------------
+              If customer has already been created
+          ------------------------------------------------ */}
+
+          {selectedCustomer ? (
+            <div className="max-w-xl">
+              <div
+                className="
+                  mb-4
+                  flex
+                  items-center
+                  justify-between
+                "
+              >
+                <div>
+                  <p
+                    className="
+                      text-[10px]
+                      font-semibold
+                      uppercase
+                      tracking-wide
+                      text-emerald-600
+                    "
+                  >
+                    Customer Created
+                  </p>
+
+                  <p
+                    className="
+                      mt-1
+                      text-sm
+                      font-bold
+                      text-slate-900
+                    "
+                  >
+                    New customer has been added
+                  </p>
+                </div>
+              </div>
+
+              <CustomerPreview customer={selectedCustomer} />
+            </div>
+          ) : (
+            /* ---------------------------------------------
+               CREATE CUSTOMER FORM
+            ---------------------------------------------- */
+
+            <div className="max-w-xl">
+              <div className="mb-5">
+                <h4
+                  className="
+                    text-sm
+                    font-bold
+                    text-slate-900
+                  "
+                >
+                  Create New Customer
+                </h4>
+
+                <p
+                  className="
+                    mt-1
+                    text-xs
+                    text-slate-500
+                  "
+                >
+                  Customer information will be saved locally for future orders.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                {/* -----------------------------------------
+                    NAME
+                ------------------------------------------ */}
+
+                <div>
+                  <label
+                    htmlFor="newCustomerName"
+                    className="
+                      mb-1.5
+                      block
+                      text-xs
+                      font-semibold
+                      text-slate-700
+                    "
+                  >
+                    Customer Name
+                    <span className="text-red-500"> *</span>
+                  </label>
+
+                  <input
+                    id="newCustomerName"
+                    type="text"
+                    placeholder="Enter customer name"
+                    {...form.register("newCustomerName", {
+                      required: "Customer name is required",
+                    })}
+                    className="
+                      h-11
+                      w-full
+                      rounded-xl
+                      border
+                      border-slate-200
+                      bg-white
+                      px-3
+                      text-sm
+                      outline-none
+                      transition
+                      focus:border-[#263c93]
+                      focus:ring-2
+                      focus:ring-[#263c93]/10
+                    "
+                  />
+
+                  {form.formState.errors.newCustomerName && (
+                    <p
+                      className="
+                        mt-1.5
+                        text-xs
+                        text-red-500
+                      "
+                    >
+                      {form.formState.errors.newCustomerName.message}
+                    </p>
+                  )}
+                </div>
+
+                {/* -----------------------------------------
+                    PHONE
+                ------------------------------------------ */}
+
+                <div>
+                  <label
+                    htmlFor="newCustomerPhone"
+                    className="
+                      mb-1.5
+                      block
+                      text-xs
+                      font-semibold
+                      text-slate-700
+                    "
+                  >
+                    Phone
+                    <span className="text-red-500"> *</span>
+                  </label>
+
+                  <input
+                    id="newCustomerPhone"
+                    type="tel"
+                    placeholder="Enter phone number"
+                    {...form.register("newCustomerPhone", {
+                      required: "Phone number is required",
+                    })}
+                    className="
+                      h-11
+                      w-full
+                      rounded-xl
+                      border
+                      border-slate-200
+                      bg-white
+                      px-3
+                      text-sm
+                      outline-none
+                      transition
+                      focus:border-[#263c93]
+                      focus:ring-2
+                      focus:ring-[#263c93]/10
+                    "
+                  />
+
+                  {form.formState.errors.newCustomerPhone && (
+                    <p
+                      className="
+                        mt-1.5
+                        text-xs
+                        text-red-500
+                      "
+                    >
+                      {form.formState.errors.newCustomerPhone.message}
+                    </p>
+                  )}
+                </div>
+
+                {/* -----------------------------------------
+                    EMAIL + TIER
+                ------------------------------------------ */}
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label
+                      htmlFor="newCustomerEmail"
+                      className="
+                        mb-1.5
+                        block
+                        text-xs
+                        font-semibold
+                        text-slate-700
+                      "
+                    >
+                      Email
+                    </label>
+
+                    <input
+                      id="newCustomerEmail"
+                      type="email"
+                      placeholder="customer@email.com"
+                      {...form.register("newCustomerEmail")}
+                      className="
+                        h-11
+                        w-full
+                        rounded-xl
+                        border
+                        border-slate-200
+                        bg-white
+                        px-3
+                        text-sm
+                        outline-none
+                        transition
+                        focus:border-[#263c93]
+                        focus:ring-2
+                        focus:ring-[#263c93]/10
+                      "
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="newCustomerTier"
+                      className="
+                        mb-1.5
+                        block
+                        text-xs
+                        font-semibold
+                        text-slate-700
+                      "
+                    >
+                      Customer Tier
+                    </label>
+
+                    <select
+                      id="newCustomerTier"
+                      {...form.register("newCustomerTier")}
+                      className="
+                        h-11
+                        w-full
+                        rounded-xl
+                        border
+                        border-slate-200
+                        bg-white
+                        px-3
+                        text-sm
+                        outline-none
+                        transition
+                        focus:border-[#263c93]
+                        focus:ring-2
+                        focus:ring-[#263c93]/10
+                      "
+                    >
+                      <option value="Regular">Regular</option>
+
+                      <option value="Silver">Silver</option>
+
+                      <option value="Gold">Gold</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* -----------------------------------------
+                    ADDRESS
+                ------------------------------------------ */}
+
+                <div>
+                  <label
+                    htmlFor="newCustomerAddress"
+                    className="
+                      mb-1.5
+                      block
+                      text-xs
+                      font-semibold
+                      text-slate-700
+                    "
+                  >
+                    Address
+                  </label>
+
+                  <textarea
+                    id="newCustomerAddress"
+                    rows={3}
+                    placeholder="Enter customer address"
+                    {...form.register("newCustomerAddress")}
+                    className="
+                      w-full
+                      resize-none
+                      rounded-xl
+                      border
+                      border-slate-200
+                      bg-white
+                      px-3
+                      py-2.5
+                      text-sm
+                      outline-none
+                      transition
+                      focus:border-[#263c93]
+                      focus:ring-2
+                      focus:ring-[#263c93]/10
+                    "
+                  />
+                </div>
+
+                {/* -----------------------------------------
+                    CREATE BUTTON
+                ------------------------------------------ */}
+
+                <button
+                  type="button"
+                  onClick={handleCreateCustomer}
+                  disabled={
+                    !newCustomerName?.trim() || !newCustomerPhone?.trim()
+                  }
+                  className="
+                    rounded-xl
+                    bg-[#263c93]
+                    px-5
+                    py-2.5
+                    text-sm
+                    font-semibold
+                    text-white
+                    transition
+                    hover:bg-[#1f317d]
+                    disabled:cursor-not-allowed
+                    disabled:opacity-40
+                  "
+                >
+                  Create Customer
+                </button>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* =================================================
+          ACTIONS
+      ================================================== */}
+
+      <div
+        className="
+          flex
+          justify-end
+          border-t
+          border-slate-100
+          pt-4
+        "
+      >
+        <button
+          type="submit"
+          disabled={!selectedCustomer}
+          className="
+            rounded-xl
+            bg-[#263c93]
+            px-5
+            py-2.5
+            text-sm
+            font-semibold
+            text-white
+            transition
+            hover:bg-[#1f317d]
+            disabled:cursor-not-allowed
+            disabled:opacity-40
+          "
+        >
+          Continue
+        </button>
+      </div>
+    </form>
   );
 }
 
@@ -560,6 +642,8 @@ function CustomerPreview({ customer }: { customer: Customer }) {
   return (
     <section
       className="
+        mt-4
+        max-w-xl
         rounded-xl
         border
         border-[#d9ddf5]
@@ -580,27 +664,64 @@ function CustomerPreview({ customer }: { customer: Customer }) {
       </p>
 
       <div className="mt-3">
-        <p className="text-sm font-bold text-slate-900">{customer.name}</p>
+        <p
+          className="
+            text-sm
+            font-bold
+            text-slate-900
+          "
+        >
+          {customer.name}
+        </p>
 
         <div className="mt-2 space-y-1">
           {customer.phone && (
-            <p className="text-xs text-slate-500">Phone: {customer.phone}</p>
+            <p
+              className="
+                text-xs
+                text-slate-500
+              "
+            >
+              Phone: {customer.phone}
+            </p>
           )}
 
           {customer.email && (
-            <p className="text-xs text-slate-500">Email: {customer.email}</p>
+            <p
+              className="
+                text-xs
+                text-slate-500
+              "
+            >
+              Email: {customer.email}
+            </p>
           )}
 
           {customer.address && (
-            <p className="text-xs text-slate-600">
+            <p
+              className="
+                text-xs
+                text-slate-600
+              "
+            >
               Address: {customer.address}
             </p>
           )}
 
           {customer.tier && (
-            <p className="text-xs text-slate-500">
+            <p
+              className="
+                text-xs
+                text-slate-500
+              "
+            >
               Tier:{" "}
-              <span className="font-semibold text-slate-700">
+              <span
+                className="
+                  font-semibold
+                  text-slate-700
+                "
+              >
                 {customer.tier}
               </span>
             </p>
