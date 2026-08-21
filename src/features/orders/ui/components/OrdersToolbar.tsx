@@ -18,7 +18,7 @@ export function OrdersToolbar({
     <section className="rounded-xl border border-[#ddd9e8] bg-white p-3 sm:p-4">
       <div className="grid gap-3 md:grid-cols-[1.5fr_1fr] lg:grid-cols-[1.5fr_1fr_1fr]">
         <div>
-          <label className="mb-1.5 block text-[11px] font-medium text-slate-600">
+          <label className="mb-1.5 block text-[13px] font-medium text-slate-600">
             Search
           </label>
 
@@ -26,12 +26,12 @@ export function OrdersToolbar({
             value={search}
             onChange={(event) => onSearchChange(event.target.value)}
             placeholder="Search order or customer..."
-            className="h-9 w-full rounded-lg border border-slate-200 px-3 text-[12px] outline-none focus:border-[#263c93]"
+            className="h-9 w-full rounded-lg border border-slate-200 px-3 text-[13px] outline-none focus:border-[#263c93]"
           />
         </div>
 
         <div>
-          <label className="mb-1.5 block text-[11px] font-medium text-slate-600">
+          <label className="mb-1.5 block text-[13px] font-medium text-slate-600">
             Status
           </label>
 
@@ -40,7 +40,7 @@ export function OrdersToolbar({
             onChange={(event) =>
               onStatusChange(event.target.value as "all" | OrderStatus)
             }
-            className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-[12px] outline-none focus:border-[#263c93]"
+            className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-[13px] outline-none focus:border-[#263c93]"
           >
             <option value="all">All Orders</option>
             <option value="Pending">Pending</option>
@@ -53,13 +53,13 @@ export function OrdersToolbar({
         </div>
 
         <div className="hidden lg:block">
-          <label className="mb-1.5 block text-[11px] font-medium text-slate-600">
+          <label className="mb-1.5 block text-[13px] font-medium text-slate-600">
             Date Range
           </label>
 
           <input
             type="date"
-            className="h-9 w-full rounded-lg border border-slate-200 px-3 text-[12px] outline-none focus:border-[#263c93]"
+            className="h-9 w-full rounded-lg border border-slate-200 px-3 text-[13px] outline-none focus:border-[#263c93]"
           />
         </div>
       </div>
