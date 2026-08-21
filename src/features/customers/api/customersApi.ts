@@ -29,7 +29,7 @@ async function parseResponse<T>(response: Response): Promise<T> {
 
 export const customersApi = {
   async getCustomers(): Promise<Customer[]> {
-    const response = await fetch(CUSTOMERS_API_URL);
+    const response = await fetch(CUSTOMERS_API_URL); 
     return parseResponse<Customer[]>(response);
   },
 

@@ -3,22 +3,16 @@ import { useMemo, useState } from "react";
 import { useAppSelector } from "../../../app/hooks";
 
 import type { OrderStatus } from "../types/order.types";
+import { loadLocalCustomers } from "../../customers/state/customerSlice";
 
 export function useOrders() {
   const orders = useAppSelector((state) => state.orders.orders);
-
   const isLoading = useAppSelector((state) => state.orders.isLoading);
-
   const isUpdating = useAppSelector((state) => state.orders.isUpdating);
-
   const error = useAppSelector((state) => state.orders.error);
-
   const [search, setSearch] = useState("");
-
   const [status, setStatus] = useState<"all" | OrderStatus>("all");
-
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
-
   const [isCreateOrderOpen, setIsCreateOrderOpen] = useState(false);
 
   const filteredOrders = useMemo(() => {

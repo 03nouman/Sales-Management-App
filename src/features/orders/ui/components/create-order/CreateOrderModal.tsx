@@ -1,5 +1,7 @@
 import { X } from "lucide-react";
+
 import { useCreateOrder } from "../../../hooks/useCreateOrder";
+
 import { CustomerStep } from "./CustomerStep";
 import { OrderItemsStep } from "./OrderItemsStep";
 
@@ -16,11 +18,60 @@ export function CreateOrderModal({ isOpen, onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-950/45 backdrop-blur-sm sm:items-center sm:p-4">
-      <div className="flex max-h-[95vh] w-full flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:max-w-3xl sm:rounded-2xl">
-        <header className="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-4">
+    <div
+      className="
+        fixed
+        inset-0
+        z-[100]
+        flex
+        items-end
+        justify-center
+        bg-slate-950/45
+        backdrop-blur-sm
+        sm:items-center
+        sm:p-4
+      "
+    >
+      <div
+        className="
+          flex
+          max-h-[95vh]
+          w-full
+          flex-col
+          overflow-hidden
+          rounded-t-2xl
+          bg-white
+          shadow-2xl
+          sm:max-w-3xl
+          sm:rounded-2xl
+        "
+      >
+        {/* =================================================
+            MODAL HEADER
+        ================================================== */}
+
+        <header
+          className="
+            flex
+            shrink-0
+            items-center
+            justify-between
+            border-b
+            border-slate-100
+            px-5
+            py-4
+          "
+        >
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-[#263c93]">
+            <p
+              className="
+                text-[10px]
+                font-semibold
+                uppercase
+                tracking-wider
+                text-[#263c93]
+              "
+            >
               Step {order.step} of 2
             </p>
 
@@ -32,37 +83,87 @@ export function CreateOrderModal({ isOpen, onClose }: Props) {
           <button
             type="button"
             onClick={order.resetForm}
-            className="grid h-9 w-9 place-items-center rounded-lg hover:bg-slate-100"
+            aria-label="Close create order"
+            className="
+              grid
+              h-9
+              w-9
+              place-items-center
+              rounded-lg
+              text-slate-600
+              transition
+              hover:bg-slate-100
+            "
           >
             <X size={18} />
           </button>
         </header>
 
+        {/* =================================================
+            CONTENT
+        ================================================== */}
+
         <div className="min-h-0 flex-1 overflow-y-auto p-5">
-          {order.step === 1 ? (
+          {/* =================================================
+              CATALOG ERROR
+          ================================================== */}
+
+          {order.catalogError && (
+            <div
+              className="
+                mb-5
+                rounded-xl
+                border
+                border-red-200
+                bg-red-50
+                px-4
+                py-3
+                text-sm
+                text-red-700
+              "
+            >
+              {order.catalogError}
+            </div>
+          )}
+
+          {/* =================================================
+              STEP 1
+          ================================================== */}
+
+          {order.step === 1 && (
             <CustomerStep
               form={order.form}
               customers={order.customers}
               selectedCustomer={order.selectedCustomer}
+              customerMode={order.customerMode}
+              isCreatingCustomer={order.isCreatingCustomer}
+              onCustomerModeChange={order.changeCustomerMode}
+              onCreateCustomer={order.createCustomer}
               onNext={order.goToItemsStep}
             />
-          ) : (
-            <OrderItemsStep
-              form={order.form}
-              products={order.products}
-              selectedItems={order.selectedItems}
-              subtotal={order.subtotal}
-              total={order.total}
-              remainingAmount={order.remainingAmount}
-              paymentStatus={order.paymentStatus}
-              onAddProduct={order.addItem}
-              onIncrease={order.increaseQuantity}
-              onDecrease={order.decreaseQuantity}
-              onRemove={order.removeItem}
-              onBack={order.goBack}
-              onSubmit={order.submitOrder}
-            />
           )}
+
+          {/* =================================================
+              STEP 2
+          ================================================== */}
+
+          {order.step === 2 &&
+            // <OrderItemsStep
+            //   form={order.form}
+            //   products={order.products}
+            //   selectedItems={order.selectedItems}
+            //   subtotal={order.subtotal}
+            //   total={order.total}
+            //   remainingAmount={order.remainingAmount}
+            //   paymentStatus={order.paymentStatus}
+            //   onAddProduct={order.addItem}
+            //   onIncrease={order.increaseQuantity}
+            //   onDecrease={order.decreaseQuantity}
+            //   onRemove={order.removeItem}
+            //   onBack={order.goBack}
+            //   onSubmit={order.submitOrder}
+            // />
+            "order"}
         </div>
       </div>
     </div>

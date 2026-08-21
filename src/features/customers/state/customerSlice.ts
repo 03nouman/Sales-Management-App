@@ -3,12 +3,10 @@ import {
   createSlice,
   type PayloadAction,
 } from "@reduxjs/toolkit";
-
 import { customersApi } from "../api/customersApi";
-
 import type { Customer } from "../types/customer.types";
-
 import type { CustomersState } from "../types/customerState.types";
+import { getStoredCustomers, saveCustomers } from "../utils/customerStorage";
 
 /* =========================================================
    INITIAL STATE
@@ -16,19 +14,35 @@ import type { CustomersState } from "../types/customerState.types";
 
 const initialState: CustomersState = {
   customers: [],
-
   isLoading: false,
-
   isCreating: false,
-
   isUpdating: false,
-
   isDeleting: false,
-
   error: null,
-
   selectedCustomerId: null,
 };
+
+/* =========================================================
+   LOAD LOCAL CUSTOMERS
+========================================================= */
+
+export const loadLocalCustomers = createAsyncThunk<
+  Customer[],
+  void,
+  {
+    rejectValue: string;
+  }
+>("customers/loadLocalCustomers", async (_, { rejectWithValue }) => {
+  try {
+    return getStoredCustomers();
+  } catch (error) {
+    return rejectWithValue(
+      error instanceof Error
+        ? error.message
+        : "Unable to load local customers.",
+    );
+  }
+});
 
 /* =========================================================
    FETCH CUSTOMERS
@@ -112,6 +126,8 @@ const customersSlice = createSlice({
 
     addCustomerLocal(state, action: PayloadAction<Customer>) {
       state.customers.unshift(action.payload);
+      state.selectedCustomerId = action.payload.id;
+      saveCustomers(state.customers);
     },
 
     /* =====================================================
@@ -125,6 +141,7 @@ const customersSlice = createSlice({
 
       if (index !== -1) {
         state.customers[index] = action.payload;
+        saveCustomers(state.customers);
       }
     },
 
@@ -140,6 +157,8 @@ const customersSlice = createSlice({
       if (state.selectedCustomerId === action.payload) {
         state.selectedCustomerId = null;
       }
+
+      saveCustomers(state.customers);
     },
 
     /* =====================================================
@@ -148,17 +167,11 @@ const customersSlice = createSlice({
 
     resetCustomers(state) {
       state.customers = [];
-
       state.isLoading = false;
-
       state.isCreating = false;
-
       state.isUpdating = false;
-
       state.isDeleting = false;
-
       state.error = null;
-
       state.selectedCustomerId = null;
     },
   },
@@ -171,18 +184,38 @@ const customersSlice = createSlice({
     builder
 
       /* ===================================================
+         LOAD LOCAL CUSTOMERS
+      =================================================== */
+
+      .addCase(loadLocalCustomers.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+
+      .addCase(loadLocalCustomers.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.customers = action.payload;
+      })
+
+      .addCase(loadLocalCustomers.rejected, (state, action) => {
+        state.isLoading = false;
+
+        state.error = action.payload ?? "Unable to load local customers.";
+      })
+
+      /* ===================================================
          FETCH CUSTOMERS
+         -----------------------------------------------
+         Future backend functionality
       =================================================== */
 
       .addCase(fetchCustomers.pending, (state) => {
         state.isLoading = true;
-
         state.error = null;
       })
 
       .addCase(fetchCustomers.fulfilled, (state, action) => {
         state.isLoading = false;
-
         state.customers = action.payload;
       })
 
@@ -198,7 +231,6 @@ const customersSlice = createSlice({
 
       .addCase(fetchCustomerById.pending, (state) => {
         state.isLoading = true;
-
         state.error = null;
       })
 
