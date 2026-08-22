@@ -3,7 +3,6 @@ import { useMemo, useState } from "react";
 import { useAppSelector } from "../../../app/hooks";
 
 import type { OrderStatus } from "../types/order.types";
-import { loadLocalCustomers } from "../../customers/state/customerSlice";
 
 export function useOrders() {
   const orders = useAppSelector((state) => state.orders.orders);

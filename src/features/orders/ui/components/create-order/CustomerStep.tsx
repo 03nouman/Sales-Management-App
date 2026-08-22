@@ -1,52 +1,91 @@
-import { useState } from "react";
-import { Check, ChevronDown, Search, UserPlus } from "lucide-react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+
+import { ChevronDown, Check, Search, UserPlus } from "lucide-react";
+
 import type { UseFormReturn } from "react-hook-form";
-import type { CreateOrderFormValues } from "../../../hooks/useCreateOrder";
+
 import type {
   Customer,
   CreateCustomerPayload,
   CustomerTier,
 } from "../../../../customers/types/customer.types";
-import type { CustomerMode } from "../../../hooks/useCreateOrder";
-import { useAppDispatch, useAppSelector } from "../../../../../app/hooks";
-import type { RootState } from "../../../../../app/store";
+
+import type {
+  CustomerMode,
+  CreateOrderFormValues,
+} from "../../../hooks/useCreateOrder";
+
+/* =========================================================
+   PROPS
+========================================================= */
 
 type Props = {
   form: UseFormReturn<CreateOrderFormValues>;
+
+  customers: Customer[];
+
   selectedCustomer: Customer | null;
-  selectedCustomerId: number | null;
+
   customerMode: CustomerMode;
-  onModeChange: (mode: CustomerMode) => void;
+
+  onCustomerModeChange: (mode: CustomerMode) => void;
+
   onSelectCustomer: (customerId: number) => void;
-  onCreateCustomer: (data: CreateCustomerPayload) => Customer | undefined;
-  onNext: () => void;
+
+  onCreateCustomer: (data: CreateCustomerPayload) => Customer;
+
+  onNext: () => void | Promise<void>;
 };
 
+/* =========================================================
+   NEW CUSTOMER FORM
+========================================================= */
+
+type NewCustomerFormValues = {
+  name: string;
+  phone: string;
+  email: string;
+  address: string;
+  tier: CustomerTier;
+};
+
+/* =========================================================
+   COMPONENT
+========================================================= */
+
 export function CustomerStep({
+  form,
+  customers,
   selectedCustomer,
-  selectedCustomerId,
   customerMode,
-  onModeChange,
+  onCustomerModeChange,
   onSelectCustomer,
   onCreateCustomer,
   onNext,
 }: Props) {
-  let { customers } = useAppSelector((state: RootState) => state.customers);
+  /* =======================================================
+     IDS
+  ======================================================= */
 
-  /* =====================================================
-     SEARCH STATE
-  ====================================================== */
+  const searchId = useId();
 
-  const [search, setSearch] = useState("");
+  /* =======================================================
+     EXISTING CUSTOMER SEARCH STATE
+  ======================================================= */
+
+  const [searchTerm, setSearchTerm] = useState("");
+
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  /* =====================================================
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+
+  const searchContainerRef = useRef<HTMLDivElement | null>(null);
+
+  /* =======================================================
      NEW CUSTOMER STATE
-  ====================================================== */
+  ======================================================= */
 
-  const [showNewCustomerForm, setShowNewCustomerForm] = useState(true);
-
-  const [newCustomer, setNewCustomer] = useState<CreateCustomerPayload>({
+  const [newCustomer, setNewCustomer] = useState<NewCustomerFormValues>({
     name: "",
     phone: "",
     email: "",
@@ -54,174 +93,341 @@ export function CustomerStep({
     tier: "Regular",
   });
 
-  const [newCustomerError, setNewCustomerError] = useState("");
+  const [newCustomerError, setNewCustomerError] = useState<string | null>(null);
 
-  /* =====================================================
-     SEARCH RESULTS
-  ====================================================== */
+  const [createdCustomer, setCreatedCustomer] = useState<Customer | null>(null);
 
-  const normalizedSearch = search.trim().toLowerCase();
+  /* =======================================================
+     SELECTED CUSTOMER FROM FORM
+  ======================================================= */
 
-  const filteredCustomers = customers.filter((customer) => {
+  const selectedCustomerId = form.watch("customerId");
+
+  /* =======================================================
+     FILTER CUSTOMERS
+     
+     Search by:
+       - Name
+       - Phone
+       - Email
+  ======================================================= */
+
+  const filteredCustomers = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+
     if (!normalizedSearch) {
-      return false;
+      return customers;
     }
 
-    const nameMatch = customer.name.toLowerCase().includes(normalizedSearch);
+    return customers.filter((customer) => {
+      const name = customer.name?.toLowerCase() ?? "";
 
-    const phoneMatch = customer.phone.toLowerCase().includes(normalizedSearch);
+      const phone = customer.phone?.toLowerCase() ?? "";
 
-    return nameMatch || phoneMatch;
-  });
+      const email = customer.email?.toLowerCase() ?? "";
 
-  /* =====================================================
-     SELECT EXISTING CUSTOMER
-  ====================================================== */
+      return (
+        name.includes(normalizedSearch) ||
+        phone.includes(normalizedSearch) ||
+        email.includes(normalizedSearch)
+      );
+    });
+  }, [customers, searchTerm]);
+
+  /* =======================================================
+     RESET HIGHLIGHT WHEN SEARCH RESULTS CHANGE
+  ======================================================= */
+
+  useEffect(() => {
+    if (filteredCustomers.length === 0) {
+      setHighlightedIndex(-1);
+      return;
+    }
+
+    setHighlightedIndex(0);
+  }, [filteredCustomers]);
+
+  /* =======================================================
+     CLOSE SEARCH WHEN CLICKING OUTSIDE
+  ======================================================= */
+
+  useEffect(() => {
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!searchContainerRef.current) {
+        return;
+      }
+
+      if (!searchContainerRef.current.contains(event.target as Node)) {
+        setIsSearchOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, []);
+
+  /* =======================================================
+     SELECT CUSTOMER
+  ======================================================= */
 
   const handleSelectCustomer = (customer: Customer) => {
     onSelectCustomer(customer.id);
-
-    setSearch(customer.name);
-
+    setSearchTerm("");
     setIsSearchOpen(false);
+    setHighlightedIndex(-1);
+    setCreatedCustomer(null);
   };
 
-  /* =====================================================
-     SWITCH TO EXISTING
-  ====================================================== */
+  /* =======================================================
+     SEARCH KEYBOARD NAVIGATION
+     
+     ↑ ArrowUp
+     ↓ ArrowDown
+     Enter
+     Escape
+  ======================================================= */
 
-  const handleExistingMode = () => {
-    onModeChange("existing");
-
-    setSearch("");
-
-    setIsSearchOpen(false);
-
-    setShowNewCustomerForm(false);
-  };
-
-  /* =====================================================
-     SWITCH TO NEW
-  ====================================================== */
-
-  const handleNewMode = () => {
-    onModeChange("new");
-
-    setSearch("");
-
-    setIsSearchOpen(false);
-
-    setShowNewCustomerForm(true);
-
-    setNewCustomerError("");
-  };
-
-  /* =====================================================
-     NEW CUSTOMER INPUT
-  ====================================================== */
-
-  const updateNewCustomer = (
-    field: keyof CreateCustomerPayload,
-    value: string,
+  const handleSearchKeyDown = (
+    event: React.KeyboardEvent<HTMLInputElement>,
   ) => {
-    setNewCustomer((current) => ({
-      ...current,
-      [field]: value,
-    }));
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+
+      if (!isSearchOpen) {
+        setIsSearchOpen(true);
+
+        if (filteredCustomers.length > 0) {
+          setHighlightedIndex(
+            event.key === "ArrowDown" ? 0 : filteredCustomers.length - 1,
+          );
+        }
+
+        return;
+      }
+
+      if (filteredCustomers.length === 0) {
+        return;
+      }
+
+      setHighlightedIndex((currentIndex) => {
+        if (event.key === "ArrowDown") {
+          if (currentIndex >= filteredCustomers.length - 1) {
+            return 0;
+          }
+
+          return currentIndex + 1;
+        }
+
+        if (currentIndex <= 0) {
+          return filteredCustomers.length - 1;
+        }
+
+        return currentIndex - 1;
+      });
+
+      return;
+    }
+
+    if (event.key === "Enter") {
+      event.preventDefault();
+
+      if (
+        isSearchOpen &&
+        highlightedIndex >= 0 &&
+        highlightedIndex < filteredCustomers.length
+      ) {
+        handleSelectCustomer(filteredCustomers[highlightedIndex]);
+      }
+
+      return;
+    }
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+
+      setIsSearchOpen(false);
+
+      setHighlightedIndex(-1);
+    }
   };
 
-  /* =====================================================
-     CREATE NEW CUSTOMER
-  ====================================================== */
+  /* =======================================================
+     CUSTOMER MODE CHANGE
+  ======================================================= */
+
+  const handleCustomerModeChange = (mode: CustomerMode) => {
+    setNewCustomerError(null);
+
+    setSearchTerm("");
+
+    setIsSearchOpen(false);
+
+    setHighlightedIndex(-1);
+
+    if (mode === "existing") {
+      setCreatedCustomer(null);
+    }
+
+    onCustomerModeChange(mode);
+  };
+
+  /* =======================================================
+     CREATE CUSTOMER
+  ======================================================= */
 
   const handleCreateCustomer = () => {
-    setNewCustomerError("");
+    setNewCustomerError(null);
 
-    if (!newCustomer.name.trim()) {
+    const name = newCustomer.name.trim();
+
+    const phone = newCustomer.phone.trim();
+
+    const email = newCustomer.email.trim();
+
+    const address = newCustomer.address.trim();
+
+    /* -----------------------------------------------
+       VALIDATION
+    ------------------------------------------------ */
+
+    if (!name) {
       setNewCustomerError("Customer name is required.");
 
       return;
     }
 
-    if (!newCustomer.phone.trim()) {
+    if (!phone) {
       setNewCustomerError("Customer phone is required.");
 
       return;
     }
 
+    /* -----------------------------------------------
+       DUPLICATE PHONE
+    ------------------------------------------------ */
+
     const existingCustomer = customers.find(
-      (customer) => customer.phone.trim() === newCustomer.phone.trim(),
+      (customer) => customer.phone.trim() === phone,
     );
 
     if (existingCustomer) {
-      setNewCustomerError("A customer with this phone number already exists.");
+      setNewCustomerError(
+        "A customer with this phone number already exists. Please use the existing customer.",
+      );
 
       return;
     }
 
-    const createdCustomer = onCreateCustomer({
-      name: newCustomer.name.trim(),
-      phone: newCustomer.phone.trim(),
-      email: newCustomer.email?.trim() || undefined,
-      address: newCustomer.address?.trim() || undefined,
-      tier: newCustomer.tier || "Regular",
-    });
+    /* -----------------------------------------------
+       PAYLOAD
+    ------------------------------------------------ */
 
-    if (!createdCustomer) {
-      return;
+    const payload: CreateCustomerPayload = {
+      name,
+      phone,
+      email: email || undefined,
+      address: address || undefined,
+      tier: newCustomer.tier,
+    };
+
+    try {
+      const customer = onCreateCustomer(payload);
+
+      /*
+       * Keep new mode active.
+       *
+       * The form disappears because createdCustomer
+       * now exists.
+       */
+
+      setCreatedCustomer(customer);
+
+      /* ---------------------------------------------
+         CLEAR FORM
+      --------------------------------------------- */
+
+      setNewCustomer({
+        name: "",
+        phone: "",
+        email: "",
+        address: "",
+        tier: "Regular",
+      });
+    } catch (error) {
+      setNewCustomerError(
+        error instanceof Error ? error.message : "Unable to create customer.",
+      );
     }
-
-    /*
-     * Hide the form after successful creation.
-     *
-     * IMPORTANT:
-     * We DO NOT switch customerMode back to
-     * "existing".
-     *
-     * The mode remains "new".
-     */
-
-    setShowNewCustomerForm(false);
-
-    setNewCustomerError("");
   };
 
-  /* =====================================================
+  /* =======================================================
+     CHANGE CUSTOMER AFTER CREATION
+  ======================================================= */
+
+  const handleCreateAnotherCustomer = () => {
+    setCreatedCustomer(null);
+
+    setNewCustomerError(null);
+  };
+
+  /* =======================================================
+     CONTINUE
+  ======================================================= */
+
+  const handleContinue = async () => {
+    await onNext();
+  };
+
+  /* =======================================================
      RENDER
-  ====================================================== */
+  ======================================================= */
 
   return (
-    <div className="space-y-6">
-      {/* =================================================
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+
+        void handleContinue();
+      }}
+      className="space-y-6"
+    >
+      {/* ===================================================
           HEADER
-      ================================================== */}
+      ==================================================== */}
 
       <section>
-        <h3 className="text-base font-bold text-slate-900">Select Customer</h3>
+        <h3 className="text-base font-bold text-slate-900">Customer Details</h3>
 
         <p className="mt-1 text-xs text-slate-500">
-          Select an existing customer or create a new customer before adding
-          products.
+          Select an existing customer or create a new customer for this order.
         </p>
       </section>
 
-      {/* =================================================
+      {/* ===================================================
           MODE SWITCH
-      ================================================== */}
+      ==================================================== */}
 
       <div
         className="
-          inline-flex
+          flex
+          w-fit
           rounded-xl
           border
           border-slate-200
           bg-slate-50
           p-1
         "
+        role="tablist"
+        aria-label="Customer type"
       >
         <button
           type="button"
-          onClick={handleExistingMode}
+          role="tab"
+          aria-selected={customerMode === "existing"}
+          onClick={() => handleCustomerModeChange("existing")}
           className={`
             rounded-lg
             px-4
@@ -241,7 +447,9 @@ export function CustomerStep({
 
         <button
           type="button"
-          onClick={handleNewMode}
+          role="tab"
+          aria-selected={customerMode === "new"}
+          onClick={() => handleCustomerModeChange("new")}
           className={`
             flex
             items-center
@@ -264,15 +472,15 @@ export function CustomerStep({
         </button>
       </div>
 
-      {/* =================================================
+      {/* ===================================================
           EXISTING CUSTOMER
-      ================================================== */}
+      ==================================================== */}
 
       {customerMode === "existing" && (
         <section className="space-y-4">
-          <div>
+          <div ref={searchContainerRef} className="relative max-w-xl">
             <label
-              htmlFor="customerSearch"
+              htmlFor={searchId}
               className="
                 mb-1.5
                 block
@@ -284,159 +492,228 @@ export function CustomerStep({
               Search Customer
             </label>
 
-            <div className="relative w-full max-w-96">
-              <div
+            {/* -------------------------------------------
+                SEARCH INPUT
+            -------------------------------------------- */}
+
+            <div className="relative">
+              <Search
+                size={16}
                 className="
-                  flex
+                  pointer-events-none
+                  absolute
+                  left-3
+                  top-1/2
+                  -translate-y-1/2
+                  text-slate-400
+                "
+              />
+
+              <input
+                id={searchId}
+                type="text"
+                role="combobox"
+                aria-expanded={isSearchOpen}
+                aria-controls={`${searchId}-listbox`}
+                aria-autocomplete="list"
+                aria-activedescendant={
+                  highlightedIndex >= 0
+                    ? `${searchId}-option-${highlightedIndex}`
+                    : undefined
+                }
+                value={
+                  isSearchOpen
+                    ? searchTerm
+                    : selectedCustomer
+                      ? `${selectedCustomer.name}${
+                          selectedCustomer.phone
+                            ? ` — ${selectedCustomer.phone}`
+                            : ""
+                        }`
+                      : searchTerm
+                }
+                onChange={(event) => {
+                  setSearchTerm(event.target.value);
+
+                  setIsSearchOpen(true);
+
+                  setHighlightedIndex(0);
+
+                  /*
+                   * If user starts searching after
+                   * having selected a customer, don't
+                   * immediately change the selected
+                   * customer.
+                   *
+                   * Selection happens only after
+                   * choosing a result.
+                   */
+                }}
+                onFocus={() => {
+                  setIsSearchOpen(true);
+
+                  if (filteredCustomers.length > 0) {
+                    setHighlightedIndex(0);
+                  }
+                }}
+                onKeyDown={handleSearchKeyDown}
+                placeholder="Search by name or phone..."
+                className="
                   h-11
-                  items-center
+                  w-full
                   rounded-xl
                   border
                   border-slate-200
                   bg-white
+                  pl-9
+                  pr-10
+                  text-sm
+                  outline-none
                   transition
-                  focus-within:border-[#263c93]
-                  focus-within:ring-2
-                  focus-within:ring-[#263c93]/10
+                  focus:border-[#263c93]
+                  focus:ring-2
+                  focus:ring-[#263c93]/10
+                "
+              />
+
+              <ChevronDown
+                size={16}
+                className={`
+                  pointer-events-none
+                  absolute
+                  right-3
+                  top-1/2
+                  -translate-y-1/2
+                  text-slate-400
+                  transition
+                  ${isSearchOpen ? "rotate-180" : ""}
+                `}
+              />
+            </div>
+
+            {/* -------------------------------------------
+                SEARCH RESULTS
+            -------------------------------------------- */}
+
+            {isSearchOpen && (
+              <div
+                id={`${searchId}-listbox`}
+                role="listbox"
+                className="
+                  absolute
+                  left-0
+                  right-0
+                  top-full
+                  z-50
+                  mt-2
+                  max-h-64
+                  overflow-y-auto
+                  rounded-xl
+                  border
+                  border-slate-200
+                  bg-white
+                  p-1
+                  shadow-xl
                 "
               >
-                <Search size={17} className="ml-3 shrink-0 text-slate-400" />
-
-                <input
-                  id="customerSearch"
-                  type="text"
-                  value={search}
-                  onChange={(event) => {
-                    setSearch(event.target.value);
-
-                    setIsSearchOpen(true);
-                  }}
-                  onFocus={() => {
-                    if (search.trim()) {
-                      setIsSearchOpen(true);
-                    }
-                  }}
-                  placeholder="Search by name or phone..."
-                  className="
-                    h-full
-                    min-w-0
-                    flex-1
-                    bg-transparent
-                    px-3
-                    text-sm
-                    outline-none
-                    placeholder:text-slate-400
-                  "
-                />
-
-                <ChevronDown
-                  size={17}
-                  className="
-                    mr-3
-                    shrink-0
-                    text-slate-400
-                  "
-                />
-              </div>
-
-              {/* =================================================
-                  SEARCH RESULTS
-              ================================================== */}
-
-              {isSearchOpen && normalizedSearch && (
-                <div
-                  className="
-                      absolute
-                      left-0
-                      right-0
-                      top-[calc(100%+6px)]
-                      z-30
-                      max-h-64
-                      overflow-y-auto
-                      rounded-xl
-                      border
-                      border-slate-200
-                      bg-white
-                      p-1
-                      shadow-xl
+                {filteredCustomers.length === 0 ? (
+                  <div
+                    className="
+                      px-3
+                      py-4
+                      text-center
+                      text-xs
+                      text-slate-500
                     "
-                >
-                  {filteredCustomers.length > 0 ? (
-                    filteredCustomers.map((customer) => {
-                      const isSelected =
-                        Number(selectedCustomerId) === Number(customer.id);
+                  >
+                    No customers found.
+                  </div>
+                ) : (
+                  filteredCustomers.map((customer, index) => {
+                    const isHighlighted = index === highlightedIndex;
 
-                      return (
-                        <button
-                          key={customer.id}
-                          type="button"
-                          onClick={() => handleSelectCustomer(customer)}
-                          className="
-                                flex
-                                w-full
-                                items-center
-                                justify-between
-                                rounded-lg
-                                px-3
-                                py-2.5
-                                text-left
-                                transition
-                                hover:bg-slate-50
+                    const isSelected = customer.id === selectedCustomerId;
+
+                    return (
+                      <button
+                        key={customer.id}
+                        id={`${searchId}-option-${index}`}
+                        type="button"
+                        role="option"
+                        aria-selected={isSelected}
+                        onMouseDown={(event) => {
+                          /*
+                           * Prevent input blur before
+                           * the selection is processed.
+                           */
+
+                          event.preventDefault();
+                        }}
+                        onClick={() => handleSelectCustomer(customer)}
+                        onMouseEnter={() => setHighlightedIndex(index)}
+                        className={`
+                            flex
+                            w-full
+                            items-center
+                            justify-between
+                            rounded-lg
+                            px-3
+                            py-2.5
+                            text-left
+                            transition
+                            ${
+                              isHighlighted
+                                ? "bg-[#f1f3ff]"
+                                : "hover:bg-slate-50"
+                            }
+                          `}
+                      >
+                        <div className="min-w-0">
+                          <p
+                            className="
+                                truncate
+                                text-sm
+                                font-semibold
+                                text-slate-800
                               "
-                        >
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-slate-800">
-                              {customer.name}
-                            </p>
+                          >
+                            {customer.name}
+                          </p>
 
-                            <p className="mt-0.5 text-xs text-slate-500">
-                              {customer.phone}
-                            </p>
-                          </div>
+                          <p
+                            className="
+                                mt-0.5
+                                truncate
+                                text-xs
+                                text-slate-500
+                              "
+                          >
+                            {customer.phone}
 
-                          <div className="ml-3 flex shrink-0 items-center gap-2">
-                            {customer.tier && (
-                              <span
-                                className="
-                                      rounded-full
-                                      bg-slate-100
-                                      px-2
-                                      py-1
-                                      text-[10px]
-                                      font-semibold
-                                      text-slate-600
-                                    "
-                              >
-                                {customer.tier}
-                              </span>
-                            )}
+                            {customer.email ? ` • ${customer.email}` : ""}
+                          </p>
+                        </div>
 
-                            {isSelected && (
-                              <Check size={16} className="text-[#263c93]" />
-                            )}
-                          </div>
-                        </button>
-                      );
-                    })
-                  ) : (
-                    <div className="px-4 py-6 text-center">
-                      <p className="text-sm font-medium text-slate-600">
-                        No customer found
-                      </p>
-
-                      <p className="mt-1 text-xs text-slate-400">
-                        Try another name or phone number.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+                        {isSelected && (
+                          <Check
+                            size={16}
+                            className="
+                                shrink-0
+                                text-[#263c93]
+                              "
+                          />
+                        )}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            )}
           </div>
 
-          {/* =================================================
-              SELECTED CUSTOMER
-          ================================================== */}
+          {/* -------------------------------------------
+              SELECTED CUSTOMER PREVIEW
+          -------------------------------------------- */}
 
           {selectedCustomer && (
             <section
@@ -463,19 +740,56 @@ export function CustomerStep({
                     Selected Customer
                   </p>
 
-                  <p className="mt-1.5 text-sm font-bold text-slate-900">
+                  <p className="mt-2 text-sm font-bold text-slate-900">
                     {selectedCustomer.name}
                   </p>
+
+                  <div className="mt-2 space-y-1">
+                    {selectedCustomer.phone && (
+                      <p className="text-xs text-slate-500">
+                        Phone: {selectedCustomer.phone}
+                      </p>
+                    )}
+
+                    {selectedCustomer.email && (
+                      <p className="text-xs text-slate-500">
+                        Email: {selectedCustomer.email}
+                      </p>
+                    )}
+
+                    {selectedCustomer.address && (
+                      <p className="text-xs text-slate-600">
+                        Address: {selectedCustomer.address}
+                      </p>
+                    )}
+
+                    {selectedCustomer.tier && (
+                      <p className="text-xs text-slate-500">
+                        Tier:{" "}
+                        <span className="font-semibold text-slate-700">
+                          {selectedCustomer.tier}
+                        </span>
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 <button
                   type="button"
                   onClick={() => {
-                    setSearch("");
+                    form.setValue("customerId", null, {
+                      shouldValidate: false,
+                      shouldDirty: true,
+                    });
 
-                    setIsSearchOpen(false);
+                    setSearchTerm("");
+
+                    setIsSearchOpen(true);
+
+                    setHighlightedIndex(filteredCustomers.length > 0 ? 0 : -1);
                   }}
                   className="
+                    shrink-0
                     text-xs
                     font-semibold
                     text-[#263c93]
@@ -485,244 +799,327 @@ export function CustomerStep({
                   Change
                 </button>
               </div>
-
-              <div className="mt-3 space-y-1">
-                <p className="text-xs text-slate-500">
-                  Phone: {selectedCustomer.phone}
-                </p>
-
-                {selectedCustomer.email && (
-                  <p className="text-xs text-slate-500">
-                    Email: {selectedCustomer.email}
-                  </p>
-                )}
-
-                {selectedCustomer.address && (
-                  <p className="text-xs text-slate-600">
-                    Address: {selectedCustomer.address}
-                  </p>
-                )}
-
-                {selectedCustomer.tier && (
-                  <p className="text-xs text-slate-500">
-                    Tier:{" "}
-                    <span className="font-semibold text-slate-700">
-                      {selectedCustomer.tier}
-                    </span>
-                  </p>
-                )}
-              </div>
             </section>
           )}
-
-          {/* {!selectedCustomer && (
-            <p className="text-xs text-slate-400">
-              Search and select a customer to continue.
-            </p>
-          )} */}
         </section>
       )}
 
-      {/* =================================================
+      {/* ===================================================
           NEW CUSTOMER
-      ================================================== */}
+      ==================================================== */}
 
       {customerMode === "new" && (
-        <section className="space-y-4">
-          {/* =================================================
-              NEW CUSTOMER FORM
-          ================================================== */}
+        <section className="max-w-2xl">
+          {/* -------------------------------------------
+              CREATED CUSTOMER
+          -------------------------------------------- */}
 
-          {showNewCustomerForm && (
-            <div className="max-w-xl rounded-xl border border-slate-200 bg-white p-5">
-              <div className="mb-5">
+          {createdCustomer ? (
+            <section
+              className="
+                rounded-xl
+                border
+                border-emerald-200
+                bg-emerald-50
+                p-4
+              "
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p
+                    className="
+                      text-[10px]
+                      font-semibold
+                      uppercase
+                      tracking-wide
+                      text-emerald-700
+                    "
+                  >
+                    Customer Created
+                  </p>
+
+                  <p className="mt-2 text-sm font-bold text-slate-900">
+                    {createdCustomer.name}
+                  </p>
+
+                  <div className="mt-2 space-y-1">
+                    <p className="text-xs text-slate-600">
+                      Phone: {createdCustomer.phone}
+                    </p>
+
+                    {createdCustomer.email && (
+                      <p className="text-xs text-slate-600">
+                        Email: {createdCustomer.email}
+                      </p>
+                    )}
+
+                    {createdCustomer.address && (
+                      <p className="text-xs text-slate-600">
+                        Address: {createdCustomer.address}
+                      </p>
+                    )}
+
+                    {createdCustomer.tier && (
+                      <p className="text-xs text-slate-600">
+                        Tier:{" "}
+                        <span className="font-semibold">
+                          {createdCustomer.tier}
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <Check
+                  size={20}
+                  className="
+                    shrink-0
+                    text-emerald-600
+                  "
+                />
+              </div>
+
+              <div className="mt-4 flex gap-3">
+                <button
+                  type="button"
+                  onClick={handleCreateAnotherCustomer}
+                  className="
+                    rounded-xl
+                    border
+                    border-slate-200
+                    bg-white
+                    px-4
+                    py-2.5
+                    text-xs
+                    font-semibold
+                    text-slate-700
+                    transition
+                    hover:bg-slate-50
+                  "
+                >
+                  Create Another
+                </button>
+              </div>
+            </section>
+          ) : (
+            /* -----------------------------------------
+               NEW CUSTOMER FORM
+            ------------------------------------------ */
+
+            <section
+              className="
+                rounded-2xl
+                border
+                border-slate-200
+                bg-slate-50/60
+                p-5
+              "
+            >
+              <div>
                 <h4 className="text-sm font-bold text-slate-900">
                   Create New Customer
                 </h4>
 
                 <p className="mt-1 text-xs text-slate-500">
-                  Add customer details before creating the order.
+                  Customer details will be saved locally and available for
+                  future orders.
                 </p>
               </div>
 
-              <div className="space-y-4">
-                {/* NAME + PHONE */}
+              {/* ---------------------------------------
+                  FIELDS
+              ---------------------------------------- */}
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <label
-                      htmlFor="newCustomerName"
-                      className="
-                        mb-1.5
-                        block
-                        text-xs
-                        font-semibold
-                        text-slate-700
-                      "
-                    >
-                      Name
-                    </label>
+              <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {/* NAME */}
 
-                    <input
-                      id="newCustomerName"
-                      type="text"
-                      value={newCustomer.name}
-                      onChange={(event) =>
-                        updateNewCustomer("name", event.target.value)
-                      }
-                      placeholder="Customer name"
-                      className="
-                        h-10
-                        w-full
-                        rounded-lg
-                        border
-                        border-slate-200
-                        px-3
-                        text-sm
-                        outline-none
-                        transition
-                        focus:border-[#263c93]
-                        focus:ring-2
-                        focus:ring-[#263c93]/10
-                      "
-                    />
-                  </div>
+                <div>
+                  <label
+                    htmlFor="new-customer-name"
+                    className="
+                      mb-1.5
+                      block
+                      text-xs
+                      font-semibold
+                      text-slate-700
+                    "
+                  >
+                    Name
+                  </label>
 
-                  <div>
-                    <label
-                      htmlFor="newCustomerPhone"
-                      className="
-                        mb-1.5
-                        block
-                        text-xs
-                        font-semibold
-                        text-slate-700
-                      "
-                    >
-                      Phone
-                    </label>
-
-                    <input
-                      id="newCustomerPhone"
-                      type="tel"
-                      value={newCustomer.phone}
-                      onChange={(event) =>
-                        updateNewCustomer("phone", event.target.value)
-                      }
-                      placeholder="Phone number"
-                      className="
-                        h-10
-                        w-full
-                        rounded-lg
-                        border
-                        border-slate-200
-                        px-3
-                        text-sm
-                        outline-none
-                        transition
-                        focus:border-[#263c93]
-                        focus:ring-2
-                        focus:ring-[#263c93]/10
-                      "
-                    />
-                  </div>
+                  <input
+                    id="new-customer-name"
+                    type="text"
+                    value={newCustomer.name}
+                    onChange={(event) =>
+                      setNewCustomer((current) => ({
+                        ...current,
+                        name: event.target.value,
+                      }))
+                    }
+                    placeholder="Customer name"
+                    className="
+                      h-11
+                      w-full
+                      rounded-xl
+                      border
+                      border-slate-200
+                      bg-white
+                      px-3
+                      text-sm
+                      outline-none
+                      transition
+                      focus:border-[#263c93]
+                      focus:ring-2
+                      focus:ring-[#263c93]/10
+                    "
+                  />
                 </div>
 
-                {/* EMAIL + TIER */}
+                {/* PHONE */}
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <label
-                      htmlFor="newCustomerEmail"
-                      className="
-                        mb-1.5
-                        block
-                        text-xs
-                        font-semibold
-                        text-slate-700
-                      "
-                    >
-                      Email
-                    </label>
+                <div>
+                  <label
+                    htmlFor="new-customer-phone"
+                    className="
+                      mb-1.5
+                      block
+                      text-xs
+                      font-semibold
+                      text-slate-700
+                    "
+                  >
+                    Phone
+                  </label>
 
-                    <input
-                      id="newCustomerEmail"
-                      type="email"
-                      value={newCustomer.email}
-                      onChange={(event) =>
-                        updateNewCustomer("email", event.target.value)
-                      }
-                      placeholder="Email address"
-                      className="
-                        h-10
-                        w-full
-                        rounded-lg
-                        border
-                        border-slate-200
-                        px-3
-                        text-sm
-                        outline-none
-                        transition
-                        focus:border-[#263c93]
-                        focus:ring-2
-                        focus:ring-[#263c93]/10
-                      "
-                    />
-                  </div>
+                  <input
+                    id="new-customer-phone"
+                    type="tel"
+                    value={newCustomer.phone}
+                    onChange={(event) =>
+                      setNewCustomer((current) => ({
+                        ...current,
+                        phone: event.target.value,
+                      }))
+                    }
+                    placeholder="Phone number"
+                    className="
+                      h-11
+                      w-full
+                      rounded-xl
+                      border
+                      border-slate-200
+                      bg-white
+                      px-3
+                      text-sm
+                      outline-none
+                      transition
+                      focus:border-[#263c93]
+                      focus:ring-2
+                      focus:ring-[#263c93]/10
+                    "
+                  />
+                </div>
 
-                  <div>
-                    <label
-                      htmlFor="newCustomerTier"
-                      className="
-                        mb-1.5
-                        block
-                        text-xs
-                        font-semibold
-                        text-slate-700
-                      "
-                    >
-                      Customer Tier
-                    </label>
+                {/* EMAIL */}
 
-                    <select
-                      id="newCustomerTier"
-                      value={newCustomer.tier}
-                      onChange={(event) =>
-                        updateNewCustomer(
-                          "tier",
-                          event.target.value as CustomerTier,
-                        )
-                      }
-                      className="
-                        h-10
-                        w-full
-                        rounded-lg
-                        border
-                        border-slate-200
-                        bg-white
-                        px-3
-                        text-sm
-                        outline-none
-                        transition
-                        focus:border-[#263c93]
-                        focus:ring-2
-                        focus:ring-[#263c93]/10
-                      "
-                    >
-                      <option value="Regular">Regular</option>
+                <div>
+                  <label
+                    htmlFor="new-customer-email"
+                    className="
+                      mb-1.5
+                      block
+                      text-xs
+                      font-semibold
+                      text-slate-700
+                    "
+                  >
+                    Email
+                  </label>
 
-                      <option value="Silver">Silver</option>
+                  <input
+                    id="new-customer-email"
+                    type="email"
+                    value={newCustomer.email}
+                    onChange={(event) =>
+                      setNewCustomer((current) => ({
+                        ...current,
+                        email: event.target.value,
+                      }))
+                    }
+                    placeholder="Email address"
+                    className="
+                      h-11
+                      w-full
+                      rounded-xl
+                      border
+                      border-slate-200
+                      bg-white
+                      px-3
+                      text-sm
+                      outline-none
+                      transition
+                      focus:border-[#263c93]
+                      focus:ring-2
+                      focus:ring-[#263c93]/10
+                    "
+                  />
+                </div>
 
-                      <option value="Gold">Gold</option>
-                    </select>
-                  </div>
+                {/* TIER */}
+
+                <div>
+                  <label
+                    htmlFor="new-customer-tier"
+                    className="
+                      mb-1.5
+                      block
+                      text-xs
+                      font-semibold
+                      text-slate-700
+                    "
+                  >
+                    Customer Tier
+                  </label>
+
+                  <select
+                    id="new-customer-tier"
+                    value={newCustomer.tier}
+                    onChange={(event) =>
+                      setNewCustomer((current) => ({
+                        ...current,
+                        tier: event.target.value as CustomerTier,
+                      }))
+                    }
+                    className="
+                      h-11
+                      w-full
+                      rounded-xl
+                      border
+                      border-slate-200
+                      bg-white
+                      px-3
+                      text-sm
+                      outline-none
+                      transition
+                      focus:border-[#263c93]
+                      focus:ring-2
+                      focus:ring-[#263c93]/10
+                    "
+                  >
+                    <option value="Regular">Regular</option>
+
+                    <option value="Silver">Silver</option>
+
+                    <option value="Gold">Gold</option>
+                  </select>
                 </div>
 
                 {/* ADDRESS */}
 
-                <div>
+                <div className="sm:col-span-2">
                   <label
-                    htmlFor="newCustomerAddress"
+                    htmlFor="new-customer-address"
                     className="
                       mb-1.5
                       block
@@ -735,19 +1132,23 @@ export function CustomerStep({
                   </label>
 
                   <textarea
-                    id="newCustomerAddress"
+                    id="new-customer-address"
                     value={newCustomer.address}
                     onChange={(event) =>
-                      updateNewCustomer("address", event.target.value)
+                      setNewCustomer((current) => ({
+                        ...current,
+                        address: event.target.value,
+                      }))
                     }
                     placeholder="Customer address"
                     rows={3}
                     className="
                       w-full
                       resize-none
-                      rounded-lg
+                      rounded-xl
                       border
                       border-slate-200
+                      bg-white
                       px-3
                       py-2.5
                       text-sm
@@ -759,105 +1160,76 @@ export function CustomerStep({
                     "
                   />
                 </div>
-
-                {/* ERROR */}
-
-                {newCustomerError && (
-                  <p className="text-xs text-red-500">{newCustomerError}</p>
-                )}
-
-                {/* CREATE */}
-
-                <div className="flex justify-end pt-1">
-                  <button
-                    type="button"
-                    onClick={handleCreateCustomer}
-                    className="
-                      rounded-lg
-                      bg-[#263c93]
-                      px-4
-                      py-2.5
-                      text-xs
-                      font-semibold
-                      text-white
-                      transition
-                      hover:bg-[#1f317d]
-                    "
-                  >
-                    Create Customer
-                  </button>
-                </div>
               </div>
-            </div>
-          )}
 
-          {/* =================================================
-              CREATED CUSTOMER
-          ================================================== */}
+              {/* ---------------------------------------
+                  ERROR
+              ---------------------------------------- */}
 
-          {!showNewCustomerForm && selectedCustomer && (
-            <section
-              className="
-                  max-w-xl
-                  rounded-xl
-                  border
-                  border-emerald-200
-                  bg-emerald-50
-                  p-4
-                "
-            >
-              <div className="flex items-start gap-3">
+              {newCustomerError && (
                 <div
+                  role="alert"
                   className="
-                      grid
-                      h-8
-                      w-8
-                      shrink-0
-                      place-items-center
-                      rounded-full
-                      bg-emerald-100
-                      text-emerald-600
-                    "
+                    mt-4
+                    rounded-xl
+                    border
+                    border-red-200
+                    bg-red-50
+                    px-3
+                    py-2.5
+                    text-xs
+                    text-red-700
+                  "
                 >
-                  <Check size={16} />
+                  {newCustomerError}
                 </div>
+              )}
 
-                <div className="min-w-0">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-600">
-                    Customer Created
-                  </p>
+              {/* ---------------------------------------
+                  CREATE BUTTON
+              ---------------------------------------- */}
 
-                  <p className="mt-1 text-sm font-bold text-slate-900">
-                    {selectedCustomer.name}
-                  </p>
-
-                  <p className="mt-1 text-xs text-slate-500">
-                    {selectedCustomer.phone}
-                  </p>
-
-                  {selectedCustomer.tier && (
-                    <p className="mt-1 text-xs text-slate-500">
-                      Tier:{" "}
-                      <span className="font-semibold text-slate-700">
-                        {selectedCustomer.tier}
-                      </span>
-                    </p>
-                  )}
-                </div>
-              </div>
+              <button
+                type="button"
+                onClick={handleCreateCustomer}
+                className="
+                  mt-5
+                  rounded-xl
+                  bg-[#263c93]
+                  px-5
+                  py-2.5
+                  text-sm
+                  font-semibold
+                  text-white
+                  transition
+                  hover:bg-[#1f317d]
+                  focus:outline-none
+                  focus:ring-2
+                  focus:ring-[#263c93]/20
+                "
+              >
+                Create Customer
+              </button>
             </section>
           )}
         </section>
       )}
 
-      {/* =================================================
+      {/* ===================================================
           ACTIONS
-      ================================================== */}
+      ==================================================== */}
 
-      <div className="flex justify-end border-t border-slate-100 pt-4">
+      <div
+        className="
+          flex
+          justify-end
+          border-t
+          border-slate-100
+          pt-4
+        "
+      >
         <button
-          type="button"
-          onClick={onNext}
+          type="submit"
           disabled={!selectedCustomer}
           className="
             rounded-xl
@@ -876,6 +1248,6 @@ export function CustomerStep({
           Continue
         </button>
       </div>
-    </div>
+    </form>
   );
 }

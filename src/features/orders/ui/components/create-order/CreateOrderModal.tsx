@@ -93,6 +93,9 @@ export function CreateOrderModal({ isOpen, onClose }: Props) {
               text-slate-600
               transition
               hover:bg-slate-100
+              focus:outline-none
+              focus:ring-2
+              focus:ring-[#263c93]/20
             "
           >
             <X size={18} />
@@ -105,11 +108,12 @@ export function CreateOrderModal({ isOpen, onClose }: Props) {
 
         <div className="min-h-0 flex-1 overflow-y-auto p-5">
           {/* =================================================
-              ERROR
+              CATALOG ERROR
           ================================================== */}
 
           {order.catalogError && (
             <div
+              role="alert"
               className="
                 mb-5
                 rounded-xl
@@ -127,7 +131,10 @@ export function CreateOrderModal({ isOpen, onClose }: Props) {
           )}
 
           {/* =================================================
-              LOADING
+              LOCAL DATA LOADING
+              
+              This is Redux/localStorage loading only.
+              There is NO API request here.
           ================================================== */}
 
           {order.isCatalogLoading && (
@@ -149,16 +156,16 @@ export function CreateOrderModal({ isOpen, onClose }: Props) {
           )}
 
           {/* =================================================
-              STEP 1
+              STEP 1 — CUSTOMER
           ================================================== */}
 
           {order.step === 1 && (
             <CustomerStep
               form={order.form}
+              customers={order.customers}
               selectedCustomer={order.selectedCustomer}
-              selectedCustomerId={order.selectedCustomerId}
               customerMode={order.customerMode}
-              onModeChange={order.setCustomerMode}
+              onCustomerModeChange={order.setCustomerMode}
               onSelectCustomer={order.selectCustomer}
               onCreateCustomer={order.createCustomer}
               onNext={order.goToItemsStep}
@@ -166,7 +173,7 @@ export function CreateOrderModal({ isOpen, onClose }: Props) {
           )}
 
           {/* =================================================
-              STEP 2
+              STEP 2 — PRODUCTS
           ================================================== */}
 
           {order.step === 2 && (

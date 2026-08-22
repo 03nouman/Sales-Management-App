@@ -29,8 +29,6 @@ import {
   generateOrderNumber,
 } from "../utils/orderHelpers";
 
-import type { Product } from "../../products/types/product.type";
-
 /* =========================================================
    CUSTOMER MODE
 ========================================================= */
@@ -59,9 +57,15 @@ export function useCreateOrder(onClose: () => void) {
   const dispatch = useAppDispatch();
 
   /* =======================================================
-     CUSTOMERS FROM REDUX
+     CUSTOMERS
      
-     Customer data is already managed by Redux/localStorage.
+     Source:
+       localStorage
+          ↓
+       customerSlice
+          ↓
+       Redux
+     
      No API request is made here.
   ======================================================= */
 
@@ -76,9 +80,11 @@ export function useCreateOrder(onClose: () => void) {
   );
 
   /* =======================================================
-     PRODUCTS FROM REDUX
+     PRODUCTS
      
-     Products are also managed by the products feature.
+     Products come from the products Redux slice.
+     The products slice currently contains demo data.
+     
      No API request is made here.
   ======================================================= */
 
@@ -92,7 +98,8 @@ export function useCreateOrder(onClose: () => void) {
      CUSTOMER MODE
   ======================================================= */
 
-  const [customerMode, setCustomerMode] = useState<CustomerMode>("existing");
+  const [customerMode, setCustomerModeState] =
+    useState<CustomerMode>("existing");
 
   /* =======================================================
      STEP
@@ -101,7 +108,7 @@ export function useCreateOrder(onClose: () => void) {
   const [step, setStep] = useState<1 | 2>(1);
 
   /* =======================================================
-     SELECTED ITEMS
+     SELECTED ORDER ITEMS
   ======================================================= */
 
   const [selectedItems, setSelectedItems] = useState<OrderItem[]>([]);
@@ -126,6 +133,9 @@ export function useCreateOrder(onClose: () => void) {
 
   /* =======================================================
      CATALOG STATE
+     
+     This only represents Redux/local state.
+     No API loading happens here.
   ======================================================= */
 
   const isCatalogLoading = customersLoading || productsLoading;
@@ -136,37 +146,107 @@ export function useCreateOrder(onClose: () => void) {
      SELECTED CUSTOMER
   ======================================================= */
 
-  const selectedCustomer = useMemo<Customer | null>(
-    () =>
+  const selectedCustomer = useMemo<Customer | null>(() => {
+    if (selectedCustomerId === null) {
+      return null;
+    }
+
+    return (
       customers.find(
         (customer) => Number(customer.id) === Number(selectedCustomerId),
-      ) ?? null,
-    [customers, selectedCustomerId],
-  );
+      ) ?? null
+    );
+  }, [customers, selectedCustomerId]);
 
   /* =======================================================
-     CUSTOMER SELECTION
+     CUSTOMER MODE CHANGE
+  ======================================================= */
+
+  const setCustomerMode = (mode: CustomerMode) => {
+    setCustomerModeState(mode);
+
+    /*
+     * When the user explicitly starts creating a new customer,
+     * remove the existing customer from the current order.
+     *
+     * This keeps:
+     *
+     * customerMode
+     * +
+     * selectedCustomerId
+     *
+     * logically consistent.
+     */
+
+    if (mode === "new") {
+      dispatch(clearSelectedCustomer());
+
+      form.setValue("customerId", null, {
+        shouldValidate: false,
+        shouldDirty: true,
+      });
+    }
+  };
+
+  /* =======================================================
+     SELECT EXISTING CUSTOMER
   ======================================================= */
 
   const selectCustomer = (customerId: number) => {
+    const customerExists = customers.some(
+      (customer) => customer.id === customerId,
+    );
+
+    if (!customerExists) {
+      return;
+    }
+
     dispatch(setSelectedCustomer(customerId));
 
     form.setValue("customerId", customerId, {
       shouldValidate: true,
       shouldDirty: true,
     });
+
+    setCustomerModeState("existing");
   };
 
   /* =======================================================
      CREATE CUSTOMER
      
      Demo/local mode:
-       Redux → localStorage through customer state handling
+     
+       CustomerStep
+          ↓
+       createCustomer()
+          ↓
+       customerSlice
+          ↓
+       localStorage + Redux
+     
+     The newly created customer remains selected.
+     We intentionally DO NOT switch back to existing mode.
   ======================================================= */
 
-  const createCustomer = (data: CreateCustomerPayload) => {
+  const createCustomer = (data: CreateCustomerPayload): Customer => {
+    const name = data.name.trim();
+    const phone = data.phone.trim();
+
+    /*
+     * Safety validation at business-logic level.
+     * UI validation also exists inside CustomerStep.
+     */
+
+    if (!name || !phone) {
+      throw new Error("Customer name and phone are required.");
+    }
+
+    /* =====================================================
+       DUPLICATE PHONE CHECK
+    ===================================================== */
+
     const existingCustomer = customers.find(
-      (customer) => customer.phone === data.phone,
+      (customer) => customer.phone.trim() === phone,
     );
 
     if (existingCustomer) {
@@ -174,29 +254,54 @@ export function useCreateOrder(onClose: () => void) {
 
       form.setValue("customerId", existingCustomer.id, {
         shouldValidate: true,
+        shouldDirty: true,
       });
+
+      /*
+       * Keep current mode.
+       *
+       * CustomerStep can decide how to display the result.
+       */
 
       return existingCustomer;
     }
+
+    /* =====================================================
+       GENERATE LOCAL ID
+    ===================================================== */
 
     const nextId =
       customers.length > 0
         ? Math.max(...customers.map((customer) => customer.id)) + 1
         : 1;
 
+    /* =====================================================
+       NEW CUSTOMER
+    ===================================================== */
+
     const newCustomer: Customer = {
       id: nextId,
-      name: data.name.trim(),
-      phone: data.phone.trim(),
+      name,
+      phone,
       email: data.email?.trim() || undefined,
       address: data.address?.trim() || undefined,
       tier: data.tier || "Regular",
     };
 
+    /* =====================================================
+       SAVE THROUGH REDUX
+       
+       customerSlice handles localStorage persistence.
+    ===================================================== */
+
     dispatch({
       type: "customers/addCustomerLocal",
       payload: newCustomer,
     });
+
+    /* =====================================================
+       SELECT NEW CUSTOMER
+    ===================================================== */
 
     dispatch(setSelectedCustomer(newCustomer.id));
 
@@ -206,14 +311,12 @@ export function useCreateOrder(onClose: () => void) {
     });
 
     /*
-     * Important:
+     * IMPORTANT:
      *
-     * We intentionally DO NOT switch customerMode
-     * back to "existing".
+     * We intentionally stay in "new" mode.
      *
-     * The user remains in New Customer mode.
-     * The new-customer form can hide and the newly
-     * created customer can be displayed as selected.
+     * CustomerStep will hide the creation form and show
+     * the newly created customer as the selected customer.
      */
 
     return newCustomer;
@@ -258,6 +361,10 @@ export function useCreateOrder(onClose: () => void) {
     setSelectedItems((current) => {
       const existing = current.find((item) => item.productId === product.id);
 
+      /* -----------------------------------------------
+         PRODUCT ALREADY EXISTS
+      ------------------------------------------------ */
+
       if (existing) {
         if (existing.quantity >= product.stock) {
           return current;
@@ -275,6 +382,10 @@ export function useCreateOrder(onClose: () => void) {
             : item,
         );
       }
+
+      /* -----------------------------------------------
+         NEW PRODUCT
+      ------------------------------------------------ */
 
       return [
         ...current,
@@ -365,7 +476,11 @@ export function useCreateOrder(onClose: () => void) {
   const goToItemsStep = async () => {
     const valid = await form.trigger("customerId");
 
-    if (!valid || !selectedCustomerId) {
+    if (!valid) {
+      return;
+    }
+
+    if (selectedCustomerId === null) {
       return;
     }
 
@@ -433,6 +548,10 @@ export function useCreateOrder(onClose: () => void) {
       deliveryTime: data.deliveryTime,
     };
 
+    /* ===================================================
+         LOCAL DEMO ORDER
+      =================================================== */
+
     const localOrder = {
       id: Date.now(),
 
@@ -459,7 +578,7 @@ export function useCreateOrder(onClose: () => void) {
 
     setSelectedItems([]);
 
-    setCustomerMode("existing");
+    setCustomerModeState("existing");
 
     setStep(1);
 
@@ -471,12 +590,14 @@ export function useCreateOrder(onClose: () => void) {
   ======================================================= */
 
   return {
+    /* Form */
     form,
 
+    /* Step */
     step,
 
+    /* Customer */
     customerMode,
-
     setCustomerMode,
 
     customers,
@@ -489,42 +610,39 @@ export function useCreateOrder(onClose: () => void) {
 
     createCustomer,
 
+    /* Products */
     products,
 
+    /* Catalog */
     isCatalogLoading,
-
     catalogError,
 
+    /* Order items */
     selectedItems,
 
+    /* Calculations */
     subtotal,
-
     discount,
-
     tax,
-
     total,
-
     paidAmount,
-
     remainingAmount,
-
     paymentStatus,
 
+    /* Product actions */
     addItem,
-
     increaseQuantity,
-
     decreaseQuantity,
-
     removeItem,
 
+    /* Navigation */
     goToItemsStep,
-
     goBack,
 
+    /* Submit */
     submitOrder,
 
+    /* Reset */
     resetForm,
   };
 }
