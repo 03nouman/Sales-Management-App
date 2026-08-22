@@ -175,11 +175,8 @@ export function OrderItemsStep({
         <button
           type="button"
           disabled={selectedItems.length === 0}
-          onClick={() => {
-            console.log("clicked");
-            // onSubmit();
-          }}
-          className="rounded-xl bg-[#263c93] px-5 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+          onClick={form.handleSubmit(onSubmit)}
+          className="cursor-pointer rounded-xl bg-[#263c93] px-5 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
         >
           Create Order
         </button>

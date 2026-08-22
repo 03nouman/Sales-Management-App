@@ -302,65 +302,79 @@ export function useCreateOrder(onClose: () => void) {
      SUBMIT ORDER
   ======================================================= */
 
-  const submitOrder: SubmitHandler<CreateOrderFormValues> = async (data) => {
-    if (!selectedCustomer) {
-      return;
-    }
+const submitOrder: SubmitHandler<CreateOrderFormValues> = async (data) => {
+  // console.log("========== CREATE ORDER ==========");
 
-    if (selectedItems.length === 0) {
-      return;
-    }
+  // console.log("Form data:", data);
+  // console.log("Selected customer:", selectedCustomer);
+  // console.log("Selected items:", selectedItems);
 
-    const payload: CreateOrderPayload = {
-      customerId: Number(selectedCustomer.id),
+  if (!selectedCustomer) {
+    console.error("CREATE ORDER STOPPED: No selected customer");
+    return;
+  }
 
-      customerName: selectedCustomer.name,
+  if (selectedItems.length === 0) {
+    console.error("CREATE ORDER STOPPED: No selected items");
+    return;
+  }
 
-      customerPhone: selectedCustomer.phone,
+  const payload: CreateOrderPayload = {
+    customerId: Number(selectedCustomer.id),
 
-      items: selectedItems,
+    customerName: selectedCustomer.name,
 
-      subtotal,
+    customerPhone: selectedCustomer.phone,
 
-      discount,
+    items: selectedItems,
 
-      tax,
+    subtotal,
 
-      total,
+    discount,
 
-      paidAmount,
+    tax,
 
-      remainingAmount,
+    total,
 
-      paymentStatus,
+    paidAmount,
 
-      paymentType: data.paymentType,
+    remainingAmount,
 
-      orderStatus: "Pending",
+    paymentStatus,
 
-      orderType: data.orderType,
+    paymentType: data.paymentType,
 
-      billingAddress: data.billingAddress,
+    orderStatus: "Pending",
 
-      deliveryDate: data.deliveryDate,
+    orderType: data.orderType,
 
-      deliveryTime: data.deliveryTime,
-    };
+    billingAddress: data.billingAddress,
 
-    const localOrder = {
-      id: Date.now(),
+    deliveryDate: data.deliveryDate,
 
-      orderNumber: generateOrderNumber(),
-
-      ...payload,
-
-      createdAt: new Date().toISOString(),
-    };
-
-    dispatch(addOrderLocal(localOrder));
-
-    resetForm();
+    deliveryTime: data.deliveryTime,
   };
+
+  // console.log("Payload:", payload);
+
+  const localOrder = {
+    id: Date.now(),
+
+    orderNumber: generateOrderNumber(),
+
+    ...payload,
+
+    createdAt: new Date().toISOString(),
+  };
+
+  console.log("Local order:", localOrder);
+
+  dispatch(addOrderLocal(localOrder));
+
+  console.log("Order dispatched successfully");
+
+  resetForm();
+};
 
   /* =======================================================
      RESET
