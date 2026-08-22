@@ -75,14 +75,7 @@ export function CreateOrderModal({ isOpen, onClose }: Props) {
               Step {order.step} of 2
             </p>
 
-            <h2
-              className="
-                mt-1
-                text-lg
-                font-bold
-                text-slate-900
-              "
-            >
+            <h2 className="mt-1 text-lg font-bold text-slate-900">
               Create New Order
             </h2>
           </div>
@@ -110,16 +103,9 @@ export function CreateOrderModal({ isOpen, onClose }: Props) {
             CONTENT
         ================================================== */}
 
-        <div
-          className="
-            min-h-0
-            flex-1
-            overflow-y-auto
-            p-5
-          "
-        >
+        <div className="min-h-0 flex-1 overflow-y-auto p-5">
           {/* =================================================
-              CATALOG ERROR
+              ERROR
           ================================================== */}
 
           {order.catalogError && (
@@ -141,16 +127,38 @@ export function CreateOrderModal({ isOpen, onClose }: Props) {
           )}
 
           {/* =================================================
+              LOADING
+          ================================================== */}
+
+          {order.isCatalogLoading && (
+            <div
+              className="
+                mb-5
+                rounded-xl
+                border
+                border-slate-200
+                bg-slate-50
+                px-4
+                py-3
+                text-sm
+                text-slate-500
+              "
+            >
+              Loading catalog...
+            </div>
+          )}
+
+          {/* =================================================
               STEP 1
           ================================================== */}
 
           {order.step === 1 && (
             <CustomerStep
               form={order.form}
-              customers={order.customers}
               selectedCustomer={order.selectedCustomer}
+              selectedCustomerId={order.selectedCustomerId}
               customerMode={order.customerMode}
-              onModeChange={order.switchCustomerMode}
+              onModeChange={order.setCustomerMode}
               onSelectCustomer={order.selectCustomer}
               onCreateCustomer={order.createCustomer}
               onNext={order.goToItemsStep}

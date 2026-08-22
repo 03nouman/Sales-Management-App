@@ -1,8 +1,19 @@
 import { useMemo, useState } from "react";
 import { useForm, type SubmitHandler } from "react-hook-form";
+
 import { useAppDispatch, useAppSelector } from "../../../app/hooks";
 
 import { addOrderLocal } from "../state/ordersSlice";
+
+import {
+  setSelectedCustomer,
+  clearSelectedCustomer,
+} from "../../customers/state/customerSlice";
+
+import type {
+  Customer,
+  CreateCustomerPayload,
+} from "../../customers/types/customer.types";
 
 import type {
   OrderItem,
@@ -18,14 +29,13 @@ import {
   generateOrderNumber,
 } from "../utils/orderHelpers";
 
-import type { Customer } from "../../customers/types/customer.types";
-
-import {
-  addCustomerLocal,
-  setSelectedCustomer,
-} from "../../customers/state/customerSlice";
-
 import type { Product } from "../../products/types/product.type";
+
+/* =========================================================
+   CUSTOMER MODE
+========================================================= */
+
+export type CustomerMode = "existing" | "new";
 
 /* =========================================================
    FORM TYPE
@@ -33,37 +43,13 @@ import type { Product } from "../../products/types/product.type";
 
 export type CreateOrderFormValues = {
   customerId: number | null;
-
   deliveryDate: string;
-
   deliveryTime: string;
-
   paymentType: PaymentType;
-
   paidAmount: number;
-
   billingAddress: string;
-
   orderType: "Delivery" | "Pickup";
-
-  /* New customer fields */
-
-  newCustomerName: string;
-
-  newCustomerPhone: string;
-
-  newCustomerEmail: string;
-
-  newCustomerAddress: string;
-
-  newCustomerTier: Customer["tier"];
 };
-
-/* =========================================================
-   CUSTOMER MODE
-========================================================= */
-
-export type CustomerMode = "existing" | "new";
 
 /* =========================================================
    HOOK
@@ -73,7 +59,10 @@ export function useCreateOrder(onClose: () => void) {
   const dispatch = useAppDispatch();
 
   /* =======================================================
-     REDUX DATA
+     CUSTOMERS FROM REDUX
+     
+     Customer data is already managed by Redux/localStorage.
+     No API request is made here.
   ======================================================= */
 
   const customers = useAppSelector((state) => state.customers.customers);
@@ -82,15 +71,22 @@ export function useCreateOrder(onClose: () => void) {
 
   const customersError = useAppSelector((state) => state.customers.error);
 
+  const selectedCustomerId = useAppSelector(
+    (state) => state.customers.selectedCustomerId,
+  );
+
+  /* =======================================================
+     PRODUCTS FROM REDUX
+     
+     Products are also managed by the products feature.
+     No API request is made here.
+  ======================================================= */
+
   const products = useAppSelector((state) => state.products.products);
 
   const productsLoading = useAppSelector((state) => state.products.isLoading);
 
   const productsError = useAppSelector((state) => state.products.error);
-
-  const reduxSelectedCustomerId = useAppSelector(
-    (state) => state.customers.selectedCustomerId,
-  );
 
   /* =======================================================
      CUSTOMER MODE
@@ -116,33 +112,15 @@ export function useCreateOrder(onClose: () => void) {
 
   const form = useForm<CreateOrderFormValues>({
     defaultValues: {
-      customerId: reduxSelectedCustomerId,
-
+      customerId: null,
       deliveryDate: "",
-
       deliveryTime: "",
-
       paymentType: "Cash",
-
       paidAmount: 0,
-
       billingAddress: "",
-
       orderType: "Delivery",
-
-      newCustomerName: "",
-
-      newCustomerPhone: "",
-
-      newCustomerEmail: "",
-
-      newCustomerAddress: "",
-
-      newCustomerTier: "Regular",
     },
   });
-
-  const selectedCustomerId = form.watch("customerId");
 
   const paidAmount = Number(form.watch("paidAmount") || 0);
 
@@ -158,17 +136,88 @@ export function useCreateOrder(onClose: () => void) {
      SELECTED CUSTOMER
   ======================================================= */
 
-  const selectedCustomer = useMemo(() => {
-    if (!selectedCustomerId) {
-      return null;
-    }
-
-    return (
+  const selectedCustomer = useMemo<Customer | null>(
+    () =>
       customers.find(
         (customer) => Number(customer.id) === Number(selectedCustomerId),
-      ) ?? null
+      ) ?? null,
+    [customers, selectedCustomerId],
+  );
+
+  /* =======================================================
+     CUSTOMER SELECTION
+  ======================================================= */
+
+  const selectCustomer = (customerId: number) => {
+    dispatch(setSelectedCustomer(customerId));
+
+    form.setValue("customerId", customerId, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+  };
+
+  /* =======================================================
+     CREATE CUSTOMER
+     
+     Demo/local mode:
+       Redux → localStorage through customer state handling
+  ======================================================= */
+
+  const createCustomer = (data: CreateCustomerPayload) => {
+    const existingCustomer = customers.find(
+      (customer) => customer.phone === data.phone,
     );
-  }, [customers, selectedCustomerId]);
+
+    if (existingCustomer) {
+      dispatch(setSelectedCustomer(existingCustomer.id));
+
+      form.setValue("customerId", existingCustomer.id, {
+        shouldValidate: true,
+      });
+
+      return existingCustomer;
+    }
+
+    const nextId =
+      customers.length > 0
+        ? Math.max(...customers.map((customer) => customer.id)) + 1
+        : 1;
+
+    const newCustomer: Customer = {
+      id: nextId,
+      name: data.name.trim(),
+      phone: data.phone.trim(),
+      email: data.email?.trim() || undefined,
+      address: data.address?.trim() || undefined,
+      tier: data.tier || "Regular",
+    };
+
+    dispatch({
+      type: "customers/addCustomerLocal",
+      payload: newCustomer,
+    });
+
+    dispatch(setSelectedCustomer(newCustomer.id));
+
+    form.setValue("customerId", newCustomer.id, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+
+    /*
+     * Important:
+     *
+     * We intentionally DO NOT switch customerMode
+     * back to "existing".
+     *
+     * The user remains in New Customer mode.
+     * The new-customer form can hide and the newly
+     * created customer can be displayed as selected.
+     */
+
+    return newCustomer;
+  };
 
   /* =======================================================
      ORDER CALCULATIONS
@@ -188,143 +237,6 @@ export function useCreateOrder(onClose: () => void) {
   const remainingAmount = calculateRemainingAmount(total, paidAmount);
 
   const paymentStatus = calculatePaymentStatus(total, paidAmount);
-
-  /* =======================================================
-     CUSTOMER MODE
-  ======================================================= */
-
-  const switchCustomerMode = (mode: CustomerMode) => {
-    setCustomerMode(mode);
-
-    if (mode === "existing") {
-      /*
-       * Clear new customer fields.
-       */
-
-      form.setValue("newCustomerName", "");
-      form.setValue("newCustomerPhone", "");
-      form.setValue("newCustomerEmail", "");
-      form.setValue("newCustomerAddress", "");
-      form.setValue("newCustomerTier", "Regular");
-    }
-
-    if (mode === "new") {
-      /*
-       * Clear existing customer selection.
-       */
-
-      form.setValue("customerId", null);
-
-      dispatch(setSelectedCustomer(null));
-    }
-  };
-
-  /* =======================================================
-     SELECT EXISTING CUSTOMER
-  ======================================================= */
-
-  const selectCustomer = (customerId: number | null) => {
-    form.setValue("customerId", customerId, {
-      shouldValidate: true,
-      shouldDirty: true,
-    });
-
-    dispatch(setSelectedCustomer(customerId));
-  };
-
-  /* =======================================================
-     CREATE NEW CUSTOMER
-  ======================================================= */
-
-  const createCustomer = () => {
-    const name = form.getValues("newCustomerName").trim();
-
-    const phone = form.getValues("newCustomerPhone").trim();
-
-    const email = form.getValues("newCustomerEmail").trim();
-
-    const address = form.getValues("newCustomerAddress").trim();
-
-    const tier = form.getValues("newCustomerTier");
-
-    if (!name || !phone) {
-      return null;
-    }
-
-    /*
-     * Generate local demo ID.
-     */
-
-    const newCustomerId =
-      customers.length > 0
-        ? Math.max(...customers.map((customer) => customer.id)) + 1
-        : 1;
-
-    const newCustomer: Customer = {
-      id: newCustomerId,
-
-      name,
-
-      phone,
-
-      ...(email ? { email } : {}),
-
-      ...(address ? { address } : {}),
-
-      tier,
-    };
-
-    /*
-     * Store in Redux.
-     *
-     * The customer persistence middleware
-     * will keep localStorage synchronized.
-     */
-
-    dispatch(addCustomerLocal(newCustomer));
-
-    /*
-     * Keep the newly created customer selected.
-     */
-
-    form.setValue("customerId", newCustomer.id, {
-      shouldValidate: true,
-    });
-
-    dispatch(setSelectedCustomer(newCustomer.id));
-
-    /*
-     * Populate billing address.
-     */
-
-    if (address) {
-      form.setValue("billingAddress", address);
-    }
-
-    /*
-     * Clear the new customer form.
-     */
-
-    form.setValue("newCustomerName", "");
-
-    form.setValue("newCustomerPhone", "");
-
-    form.setValue("newCustomerEmail", "");
-
-    form.setValue("newCustomerAddress", "");
-
-    form.setValue("newCustomerTier", "Regular");
-
-    /*
-     * IMPORTANT:
-     *
-     * Stay in NEW mode.
-     *
-     * We do NOT switch to existing mode.
-     */
-
-    return newCustomer;
-  };
 
   /* =======================================================
      ADD PRODUCT
@@ -357,9 +269,7 @@ export function useCreateOrder(onClose: () => void) {
           item.productId === product.id
             ? {
                 ...item,
-
                 quantity,
-
                 total: calculateItemTotal(item.price, quantity),
               }
             : item,
@@ -368,18 +278,12 @@ export function useCreateOrder(onClose: () => void) {
 
       return [
         ...current,
-
         {
           productId: product.id,
-
           productName: product.name,
-
           sku: product.sku,
-
           quantity: 1,
-
           price: product.price,
-
           total: calculateItemTotal(product.price, 1),
         },
       ];
@@ -413,9 +317,7 @@ export function useCreateOrder(onClose: () => void) {
 
         return {
           ...item,
-
           quantity,
-
           total: calculateItemTotal(item.price, quantity),
         };
       }),
@@ -438,9 +340,7 @@ export function useCreateOrder(onClose: () => void) {
 
           return {
             ...item,
-
             quantity,
-
             total: calculateItemTotal(item.price, quantity),
           };
         })
@@ -463,29 +363,14 @@ export function useCreateOrder(onClose: () => void) {
   ======================================================= */
 
   const goToItemsStep = async () => {
-    /*
-     * Existing customer mode.
-     */
+    const valid = await form.trigger("customerId");
 
-    if (customerMode === "existing") {
-      const valid = await form.trigger("customerId");
-
-      if (!valid || !selectedCustomerId || !selectedCustomer) {
-        return;
-      }
+    if (!valid || !selectedCustomerId) {
+      return;
     }
 
-    /*
-     * New customer mode.
-     *
-     * The new customer should already
-     * have been created before continuing.
-     */
-
-    if (customerMode === "new") {
-      if (!selectedCustomer) {
-        return;
-      }
+    if (!selectedCustomer) {
+      return;
     }
 
     setStep(2);
@@ -570,13 +455,13 @@ export function useCreateOrder(onClose: () => void) {
   const resetForm = () => {
     form.reset();
 
-    setSelectedItems([]);
+    dispatch(clearSelectedCustomer());
 
-    setStep(1);
+    setSelectedItems([]);
 
     setCustomerMode("existing");
 
-    dispatch(setSelectedCustomer(null));
+    setStep(1);
 
     onClose();
   };
@@ -592,17 +477,25 @@ export function useCreateOrder(onClose: () => void) {
 
     customerMode,
 
-    products,
+    setCustomerMode,
 
     customers,
 
     selectedCustomer,
 
-    selectedItems,
+    selectedCustomerId,
+
+    selectCustomer,
+
+    createCustomer,
+
+    products,
 
     isCatalogLoading,
 
     catalogError,
+
+    selectedItems,
 
     subtotal,
 
@@ -617,12 +510,6 @@ export function useCreateOrder(onClose: () => void) {
     remainingAmount,
 
     paymentStatus,
-
-    switchCustomerMode,
-
-    selectCustomer,
-
-    createCustomer,
 
     addItem,
 
