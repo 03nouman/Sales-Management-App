@@ -46,9 +46,7 @@ export function CreateOrderModal({ isOpen, onClose }: Props) {
           sm:rounded-2xl
         "
       >
-        {/* =================================================
-            HEADER
-        ================================================== */}
+        {/* HEADER */}
 
         <header
           className="
@@ -75,14 +73,7 @@ export function CreateOrderModal({ isOpen, onClose }: Props) {
               Step {order.step} of 2
             </p>
 
-            <h2
-              className="
-                mt-1
-                text-lg
-                font-bold
-                text-slate-900
-              "
-            >
+            <h2 className="mt-1 text-lg font-bold text-slate-900">
               Create New Order
             </h2>
           </div>
@@ -106,9 +97,7 @@ export function CreateOrderModal({ isOpen, onClose }: Props) {
           </button>
         </header>
 
-        {/* =================================================
-            CONTENT
-        ================================================== */}
+        {/* CONTENT */}
 
         <div
           className="
@@ -118,26 +107,36 @@ export function CreateOrderModal({ isOpen, onClose }: Props) {
             p-5
           "
         >
-          {/* =================================================
-              STEP 1
-          ================================================== */}
+          {/* STEP 1 */}
 
           {order.step === 1 && (
             <CustomerStep
-              customer={order.customer}
-              selectedCustomer={order.selectedCustomer}
+              form={order.form}
               customerMode={order.customerMode}
+              selectedCustomer={order.selectedCustomer}
+              searchTerm={order.searchTerm}
+              isSearchOpen={order.isSearchOpen}
+              filteredCustomers={order.filteredCustomers}
+              highlightedIndex={order.highlightedIndex}
+              selectedCustomerId={order.selectedCustomerId}
+              newCustomer={order.newCustomer}
+              newCustomerError={order.newCustomerError}
+              createdCustomer={order.createdCustomer}
               onCustomerModeChange={order.setCustomerMode}
+              onSearchChange={order.handleSearchChange}
+              onSearchFocus={order.handleSearchFocus}
+              onSearchKeyDown={order.handleSearchKeyDown}
               onSelectCustomer={order.selectCustomer}
+              onChangeSelectedCustomer={order.changeSelectedCustomer}
+              onCloseSearch={order.closeSearch}
               onCreateCustomer={order.createCustomer}
-              onChangeCustomer={order.clearCustomerSelection}
+              onCreateAnotherCustomer={order.createAnotherCustomer}
+              onUpdateNewCustomer={order.updateNewCustomer}
               onNext={order.goToItemsStep}
             />
           )}
 
-          {/* =================================================
-              STEP 2
-          ================================================== */}
+          {/* STEP 2 */}
 
           {order.step === 2 && (
             <OrderItemsStep

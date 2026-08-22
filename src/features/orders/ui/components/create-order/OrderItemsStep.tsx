@@ -119,7 +119,6 @@ export function OrderItemsStep({
             step="0.01"
             {...form.register("paidAmount", {
               valueAsNumber: true,
-              min: 0,
             })}
             placeholder="Advance / paid amount"
             className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-[#263c93]"
@@ -176,7 +175,10 @@ export function OrderItemsStep({
         <button
           type="button"
           disabled={selectedItems.length === 0}
-          onClick={() => onSubmit}
+          onClick={() => {
+            console.log("clicked");
+            // onSubmit();
+          }}
           className="rounded-xl bg-[#263c93] px-5 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
         >
           Create Order

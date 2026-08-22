@@ -1,27 +1,23 @@
-import {
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-  type KeyboardEvent,
-} from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useAppDispatch, useAppSelector } from "../../../app/hooks";
 
 import {
   addCustomerLocal,
-  clearSelectedCustomer,
   setSelectedCustomer,
-} from "../state/customerSlice";
+} from "../../customers/state/customerSlice";
 
 import type {
   Customer,
   CreateCustomerPayload,
   CustomerTier,
-} from "../types/customer.types";
+} from "../../customers/types/customer.types";
 
-import type { CustomerMode } from "../types/customerMode.types";
+/* =========================================================
+   CUSTOMER MODE
+========================================================= */
+
+export type CustomerMode = "existing" | "new";
 
 /* =========================================================
    NEW CUSTOMER FORM
@@ -35,11 +31,7 @@ export type NewCustomerFormValues = {
   tier: CustomerTier;
 };
 
-/* =========================================================
-   DEFAULT NEW CUSTOMER
-========================================================= */
-
-const defaultNewCustomer: NewCustomerFormValues = {
+const INITIAL_NEW_CUSTOMER: NewCustomerFormValues = {
   name: "",
   phone: "",
   email: "",
@@ -55,7 +47,7 @@ export function useCustomer() {
   const dispatch = useAppDispatch();
 
   /* =======================================================
-     CUSTOMERS FROM REDUX
+     REDUX
   ======================================================= */
 
   const customers = useAppSelector((state) => state.customers.customers);
@@ -71,10 +63,8 @@ export function useCustomer() {
   const [customerMode, setCustomerMode] = useState<CustomerMode>("existing");
 
   /* =======================================================
-     SEARCH
+     SEARCH STATE
   ======================================================= */
-
-  const searchId = useId();
 
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -82,14 +72,12 @@ export function useCustomer() {
 
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
 
-  const searchContainerRef = useRef<HTMLDivElement | null>(null);
-
   /* =======================================================
-     NEW CUSTOMER
+     NEW CUSTOMER STATE
   ======================================================= */
 
   const [newCustomer, setNewCustomer] =
-    useState<NewCustomerFormValues>(defaultNewCustomer);
+    useState<NewCustomerFormValues>(INITIAL_NEW_CUSTOMER);
 
   const [newCustomerError, setNewCustomerError] = useState<string | null>(null);
 
@@ -99,21 +87,21 @@ export function useCustomer() {
      SELECTED CUSTOMER
   ======================================================= */
 
-  const selectedCustomer = useMemo<Customer | null>(
-    () =>
+  const selectedCustomer = useMemo<Customer | null>(() => {
+    return (
       customers.find(
         (customer) => Number(customer.id) === Number(selectedCustomerId),
-      ) ?? null,
-    [customers, selectedCustomerId],
-  );
+      ) ?? null
+    );
+  }, [customers, selectedCustomerId]);
 
   /* =======================================================
      FILTER CUSTOMERS
      
      Search:
-       - Name
-       - Phone
-       - Email
+       - name
+       - phone
+       - email
   ======================================================= */
 
   const filteredCustomers = useMemo(() => {
@@ -139,7 +127,7 @@ export function useCustomer() {
   }, [customers, searchTerm]);
 
   /* =======================================================
-     SEARCH RESULT HIGHLIGHT
+     HIGHLIGHT FIRST RESULT
   ======================================================= */
 
   useEffect(() => {
@@ -154,31 +142,6 @@ export function useCustomer() {
 
     setHighlightedIndex(0);
   }, [filteredCustomers, isSearchOpen]);
-
-  /* =======================================================
-     CLICK OUTSIDE SEARCH
-  ======================================================= */
-
-  useEffect(() => {
-    const handlePointerDown = (event: PointerEvent) => {
-      const container = searchContainerRef.current;
-
-      if (!container) {
-        return;
-      }
-
-      if (!container.contains(event.target as Node)) {
-        setIsSearchOpen(false);
-        setHighlightedIndex(-1);
-      }
-    };
-
-    document.addEventListener("pointerdown", handlePointerDown);
-
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-    };
-  }, []);
 
   /* =======================================================
      SELECT CUSTOMER
@@ -197,37 +160,15 @@ export function useCustomer() {
   };
 
   /* =======================================================
-     SELECT CUSTOMER OBJECT
+     SEARCH CHANGE
   ======================================================= */
 
-  const handleSelectCustomer = (customer: Customer) => {
-    selectCustomer(customer.id);
-  };
-
-  /* =======================================================
-     SEARCH OPEN
-  ======================================================= */
-
-  const openCustomerSearch = () => {
-    setIsSearchOpen(true);
-
-    if (filteredCustomers.length > 0) {
-      setHighlightedIndex(0);
-    }
-  };
-
-  /* =======================================================
-     CHANGE CUSTOMER
-  ======================================================= */
-
-  const changeCustomer = () => {
-    dispatch(clearSelectedCustomer());
-
-    setSearchTerm("");
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
 
     setIsSearchOpen(true);
 
-    if (filteredCustomers.length > 0) {
+    if (value.trim() && filteredCustomers.length > 0) {
       setHighlightedIndex(0);
     } else {
       setHighlightedIndex(-1);
@@ -235,7 +176,29 @@ export function useCustomer() {
   };
 
   /* =======================================================
-     SEARCH KEYBOARD NAVIGATION
+     SEARCH FOCUS
+  ======================================================= */
+
+  const handleSearchFocus = () => {
+    setIsSearchOpen(true);
+
+    if (filteredCustomers.length > 0) {
+      setHighlightedIndex(0);
+    }
+  };
+
+  /* =======================================================
+     SEARCH CLOSE
+  ======================================================= */
+
+  const closeSearch = () => {
+    setIsSearchOpen(false);
+
+    setHighlightedIndex(-1);
+  };
+
+  /* =======================================================
+     KEYBOARD NAVIGATION
      
      ArrowDown
      ArrowUp
@@ -243,11 +206,9 @@ export function useCustomer() {
      Escape
   ======================================================= */
 
-  const handleSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    /* -----------------------------------------------------
-       ARROW DOWN / UP
-    ----------------------------------------------------- */
-
+  const handleSearchKeyDown = (
+    event: React.KeyboardEvent<HTMLInputElement>,
+  ) => {
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
 
@@ -286,10 +247,6 @@ export function useCustomer() {
       return;
     }
 
-    /* -----------------------------------------------------
-       ENTER
-    ----------------------------------------------------- */
-
     if (event.key === "Enter") {
       event.preventDefault();
 
@@ -298,43 +255,25 @@ export function useCustomer() {
         highlightedIndex >= 0 &&
         highlightedIndex < filteredCustomers.length
       ) {
-        handleSelectCustomer(filteredCustomers[highlightedIndex]);
+        selectCustomer(filteredCustomers[highlightedIndex].id);
       }
 
       return;
     }
 
-    /* -----------------------------------------------------
-       ESCAPE
-    ----------------------------------------------------- */
-
     if (event.key === "Escape") {
       event.preventDefault();
 
-      setIsSearchOpen(false);
-
-      setHighlightedIndex(-1);
+      closeSearch();
     }
   };
 
   /* =======================================================
-     SEARCH CHANGE
+     CUSTOMER MODE CHANGE
   ======================================================= */
 
-  const handleSearchChange = (value: string) => {
-    setSearchTerm(value);
-
-    setIsSearchOpen(true);
-
-    setHighlightedIndex(0);
-  };
-
-  /* =======================================================
-     CUSTOMER MODE
-  ======================================================= */
-
-  const handleCustomerModeChange = (mode: CustomerMode) => {
-    setNewCustomerError(null);
+  const changeCustomerMode = (mode: CustomerMode) => {
+    setCustomerMode(mode);
 
     setSearchTerm("");
 
@@ -342,28 +281,10 @@ export function useCustomer() {
 
     setHighlightedIndex(-1);
 
+    setNewCustomerError(null);
+
     if (mode === "existing") {
       setCreatedCustomer(null);
-    }
-
-    setCustomerMode(mode);
-  };
-
-  /* =======================================================
-     NEW CUSTOMER FIELD UPDATE
-  ======================================================= */
-
-  const updateNewCustomer = <K extends keyof NewCustomerFormValues>(
-    field: K,
-    value: NewCustomerFormValues[K],
-  ) => {
-    setNewCustomer((current) => ({
-      ...current,
-      [field]: value,
-    }));
-
-    if (newCustomerError) {
-      setNewCustomerError(null);
     }
   };
 
@@ -383,16 +304,18 @@ export function useCustomer() {
     const address = newCustomer.address.trim();
 
     /* -----------------------------------------------------
-       VALIDATION
+       REQUIRED FIELDS
     ----------------------------------------------------- */
 
     if (!name) {
       setNewCustomerError("Customer name is required.");
+
       return null;
     }
 
     if (!phone) {
       setNewCustomerError("Customer phone is required.");
+
       return null;
     }
 
@@ -400,10 +323,8 @@ export function useCustomer() {
        DUPLICATE PHONE
     ----------------------------------------------------- */
 
-    const normalizedPhone = phone.replace(/\s+/g, "");
-
     const existingCustomer = customers.find(
-      (customer) => customer.phone.replace(/\s+/g, "") === normalizedPhone,
+      (customer) => customer.phone.trim() === phone,
     );
 
     if (existingCustomer) {
@@ -413,15 +334,6 @@ export function useCustomer() {
 
       return null;
     }
-
-    /* -----------------------------------------------------
-       GENERATE LOCAL ID
-    ----------------------------------------------------- */
-
-    const nextId =
-      customers.length > 0
-        ? Math.max(...customers.map((customer) => customer.id)) + 1
-        : 1;
 
     /* -----------------------------------------------------
        PAYLOAD
@@ -435,33 +347,57 @@ export function useCustomer() {
       tier: newCustomer.tier,
     };
 
+    /* -----------------------------------------------------
+       GENERATE LOCAL ID
+    ----------------------------------------------------- */
+
+    const nextId =
+      customers.length > 0
+        ? Math.max(...customers.map((customer) => customer.id)) + 1
+        : 1;
+
     const customer: Customer = {
       id: nextId,
-      ...payload,
+      name: payload.name,
+      phone: payload.phone,
+      email: payload.email,
+      address: payload.address,
+      tier: payload.tier ?? "Regular",
     };
 
     /* -----------------------------------------------------
        REDUX + LOCAL STORAGE
+       
+       addCustomerLocal handles persistence.
     ----------------------------------------------------- */
 
     dispatch(addCustomerLocal(customer));
 
-    /*
-     * IMPORTANT:
-     *
-     * We intentionally keep customerMode = "new".
-     *
-     * The new customer is selected in Redux, but the UI
-     * stays in New Customer mode.
-     */
+    /* -----------------------------------------------------
+       SELECT NEW CUSTOMER
+    ----------------------------------------------------- */
+
+    dispatch(setSelectedCustomer(customer.id));
+
+    /* -----------------------------------------------------
+       KEEP NEW CUSTOMER MODE
+    ----------------------------------------------------- */
 
     setCreatedCustomer(customer);
+
+    /*
+     * Important:
+     *
+     * We DO NOT change customerMode here.
+     *
+     * User remains in "new" mode.
+     */
 
     /* -----------------------------------------------------
        CLEAR FORM
     ----------------------------------------------------- */
 
-    setNewCustomer(defaultNewCustomer);
+    setNewCustomer(INITIAL_NEW_CUSTOMER);
 
     return customer;
   };
@@ -475,29 +411,39 @@ export function useCustomer() {
 
     setNewCustomerError(null);
 
-    setNewCustomer(defaultNewCustomer);
+    setNewCustomer(INITIAL_NEW_CUSTOMER);
   };
 
   /* =======================================================
-     RESET CUSTOMER WORKFLOW
+     UPDATE NEW CUSTOMER FIELD
   ======================================================= */
 
-  const resetCustomer = () => {
-    dispatch(clearSelectedCustomer());
+  const updateNewCustomer = <K extends keyof NewCustomerFormValues>(
+    field: K,
+    value: NewCustomerFormValues[K],
+  ) => {
+    setNewCustomer((current) => ({
+      ...current,
+      [field]: value,
+    }));
 
-    setCustomerMode("existing");
+    if (newCustomerError) {
+      setNewCustomerError(null);
+    }
+  };
+
+  /* =======================================================
+     CHANGE SELECTED CUSTOMER
+  ======================================================= */
+
+  const changeSelectedCustomer = () => {
+    dispatch(setSelectedCustomer(null));
 
     setSearchTerm("");
 
-    setIsSearchOpen(false);
+    setIsSearchOpen(true);
 
-    setHighlightedIndex(-1);
-
-    setNewCustomer(defaultNewCustomer);
-
-    setNewCustomerError(null);
-
-    setCreatedCustomer(null);
+    setHighlightedIndex(customers.length > 0 ? 0 : -1);
   };
 
   /* =======================================================
@@ -505,9 +451,9 @@ export function useCustomer() {
   ======================================================= */
 
   return {
-    /* -----------------------------------------------------
-       CUSTOMER DATA
-    ----------------------------------------------------- */
+    /* -----------------------------------------------
+       DATA
+    ----------------------------------------------- */
 
     customers,
 
@@ -515,60 +461,52 @@ export function useCustomer() {
 
     selectedCustomerId,
 
-    /* -----------------------------------------------------
-       CUSTOMER MODE
-    ----------------------------------------------------- */
+    /* -----------------------------------------------
+       MODE
+    ----------------------------------------------- */
 
     customerMode,
 
-    setCustomerMode: handleCustomerModeChange,
+    changeCustomerMode,
 
-    /* -----------------------------------------------------
+    /* -----------------------------------------------
        SEARCH
-    ----------------------------------------------------- */
-
-    searchId,
+    ----------------------------------------------- */
 
     searchTerm,
 
     isSearchOpen,
 
-    highlightedIndex,
-
     filteredCustomers,
 
-    searchContainerRef,
+    highlightedIndex,
 
-    setSearchTerm: handleSearchChange,
+    handleSearchChange,
 
-    openCustomerSearch,
+    handleSearchFocus,
 
     handleSearchKeyDown,
 
-    handleSelectCustomer,
+    closeSearch,
 
-    changeCustomer,
+    selectCustomer,
 
-    /* -----------------------------------------------------
+    changeSelectedCustomer,
+
+    /* -----------------------------------------------
        NEW CUSTOMER
-    ----------------------------------------------------- */
+    ----------------------------------------------- */
 
     newCustomer,
-
-    updateNewCustomer,
 
     newCustomerError,
 
     createdCustomer,
 
+    updateNewCustomer,
+
     createCustomer,
 
     createAnotherCustomer,
-
-    /* -----------------------------------------------------
-       RESET
-    ----------------------------------------------------- */
-
-    resetCustomer,
   };
 }

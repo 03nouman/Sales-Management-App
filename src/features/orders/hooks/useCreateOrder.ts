@@ -1,9 +1,8 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useForm, type SubmitHandler } from "react-hook-form";
-
 import { useAppDispatch, useAppSelector } from "../../../app/hooks";
-
 import { addOrderLocal } from "../state/ordersSlice";
+import { clearSelectedCustomer } from "../../customers/state/customerSlice";
 
 import type {
   OrderItem,
@@ -18,10 +17,7 @@ import {
   calculateItemTotal,
   generateOrderNumber,
 } from "../utils/orderHelpers";
-
 import { useCustomer } from "../../customers/hooks/useCustomer";
-
-import type { Product } from "../../products/types/product.type";
 
 /* =========================================================
    FORM TYPE
@@ -45,18 +41,26 @@ export function useCreateOrder(onClose: () => void) {
   const dispatch = useAppDispatch();
 
   /* =======================================================
-     CUSTOMER WORKFLOW
+     CUSTOMER
   ======================================================= */
 
   const customer = useCustomer();
 
   /* =======================================================
-     PRODUCTS FROM REDUX
+     PRODUCTS
      
+     Demo data comes from Redux.
      No API request is made here.
   ======================================================= */
 
   const products = useAppSelector((state) => state.products.products);
+
+  /* =======================================================
+     PRODUCT STATE
+  ======================================================= */
+
+  const productsLoading = useAppSelector((state) => state.products.isLoading);
+  const productsError = useAppSelector((state) => state.products.error);
 
   /* =======================================================
      STEP
@@ -86,60 +90,43 @@ export function useCreateOrder(onClose: () => void) {
     },
   });
 
-  const paidAmount = Number(form.watch("paidAmount") || 0);
-
   /* =======================================================
      SYNC CUSTOMER WITH ORDER FORM
   ======================================================= */
 
-  const selectCustomer = (customerId: number) => {
-    customer.handleSelectCustomer(
-      customer.customers.find((item) => item.id === customerId) ?? {
-        id: customerId,
-        name: "",
-        phone: "",
-      },
-    );
+  const selectedCustomerId = customer.selectedCustomerId;
+  const selectedCustomer = customer.selectedCustomer;
 
-    form.setValue("customerId", customerId, {
-      shouldValidate: true,
-      shouldDirty: true,
-    });
-  };
+  /*
+   * The customer hook owns customer selection.
+   *
+   * The order form needs the selected ID for
+   * validation and final order submission.
+   */
 
-  /* =======================================================
-     CREATE CUSTOMER
-     
-     Customer creation itself is handled by useCustomer.
-  ======================================================= */
+  useEffect(() => {
+    const currentCustomerId = form.getValues("customerId");
 
-  const createCustomer = () => {
-    const created = customer.createCustomer();
-
-    if (!created) {
-      return null;
+    if (currentCustomerId !== selectedCustomerId) {
+      form.setValue("customerId", selectedCustomerId, {
+        shouldValidate: true,
+      });
     }
-
-    form.setValue("customerId", created.id, {
-      shouldValidate: true,
-      shouldDirty: true,
-    });
-
-    return created;
-  };
+  }, [form, selectedCustomerId]);
 
   /* =======================================================
-     SELECTED CUSTOMER CLEAR
+     CATALOG STATE
   ======================================================= */
 
-  const clearCustomerSelection = () => {
-    customer.changeCustomer();
+  const isCatalogLoading = productsLoading;
 
-    form.setValue("customerId", null, {
-      shouldValidate: false,
-      shouldDirty: true,
-    });
-  };
+  const catalogError = productsError;
+
+  /* =======================================================
+     PAYMENT
+  ======================================================= */
+
+  const paidAmount = Number(form.watch("paidAmount") || 0);
 
   /* =======================================================
      ORDER CALCULATIONS
@@ -202,10 +189,15 @@ export function useCreateOrder(onClose: () => void) {
         ...current,
         {
           productId: product.id,
+
           productName: product.name,
+
           sku: product.sku,
+
           quantity: 1,
+
           price: product.price,
+
           total: calculateItemTotal(product.price, 1),
         },
       ];
@@ -284,19 +276,16 @@ export function useCreateOrder(onClose: () => void) {
      STEP 1 → STEP 2
   ======================================================= */
 
-  const goToItemsStep = () => {
-    if (!customer.selectedCustomerId) {
+  const goToItemsStep = async () => {
+    const valid = await form.trigger("customerId");
+
+    if (!valid || !selectedCustomerId) {
       return;
     }
 
-    if (!customer.selectedCustomer) {
+    if (!selectedCustomer) {
       return;
     }
-
-    form.setValue("customerId", customer.selectedCustomerId, {
-      shouldValidate: true,
-      shouldDirty: true,
-    });
 
     setStep(2);
   };
@@ -314,7 +303,7 @@ export function useCreateOrder(onClose: () => void) {
   ======================================================= */
 
   const submitOrder: SubmitHandler<CreateOrderFormValues> = async (data) => {
-    if (!customer.selectedCustomer) {
+    if (!selectedCustomer) {
       return;
     }
 
@@ -323,11 +312,11 @@ export function useCreateOrder(onClose: () => void) {
     }
 
     const payload: CreateOrderPayload = {
-      customerId: Number(customer.selectedCustomer.id),
+      customerId: Number(selectedCustomer.id),
 
-      customerName: customer.selectedCustomer.name,
+      customerName: selectedCustomer.name,
 
-      customerPhone: customer.selectedCustomer.phone,
+      customerPhone: selectedCustomer.phone,
 
       items: selectedItems,
 
@@ -380,7 +369,7 @@ export function useCreateOrder(onClose: () => void) {
   const resetForm = () => {
     form.reset();
 
-    customer.resetCustomer();
+    dispatch(clearSelectedCustomer());
 
     setSelectedItems([]);
 
@@ -394,47 +383,65 @@ export function useCreateOrder(onClose: () => void) {
   ======================================================= */
 
   return {
-    /* -----------------------------------------------------
-       ORDER FORM
-    ----------------------------------------------------- */
-
     form,
 
     step,
 
-    /* -----------------------------------------------------
-       CUSTOMER
-    ----------------------------------------------------- */
+    /* CUSTOMER */
 
-    customer,
+    customerMode: customer.customerMode,
+
+    setCustomerMode: customer.changeCustomerMode,
 
     selectedCustomer: customer.selectedCustomer,
 
     selectedCustomerId: customer.selectedCustomerId,
 
-    customerMode: customer.customerMode,
+    selectCustomer: customer.selectCustomer,
 
-    setCustomerMode: customer.setCustomerMode,
+    createCustomer: customer.createCustomer,
 
-    selectCustomer,
+    /* SEARCH */
 
-    clearCustomerSelection,
+    searchTerm: customer.searchTerm,
 
-    createCustomer,
+    isSearchOpen: customer.isSearchOpen,
 
-    /* -----------------------------------------------------
-       PRODUCTS
-    ----------------------------------------------------- */
+    filteredCustomers: customer.filteredCustomers,
+
+    highlightedIndex: customer.highlightedIndex,
+
+    handleSearchChange: customer.handleSearchChange,
+
+    handleSearchFocus: customer.handleSearchFocus,
+
+    handleSearchKeyDown: customer.handleSearchKeyDown,
+
+    closeSearch: customer.closeSearch,
+
+    changeSelectedCustomer: customer.changeSelectedCustomer,
+
+    /* NEW CUSTOMER */
+
+    newCustomer: customer.newCustomer,
+
+    newCustomerError: customer.newCustomerError,
+
+    createdCustomer: customer.createdCustomer,
+
+    updateNewCustomer: customer.updateNewCustomer,
+
+    createAnotherCustomer: customer.createAnotherCustomer,
+
+    /* PRODUCTS */
 
     products,
 
-    isCatalogLoading: false,
+    isCatalogLoading,
 
-    catalogError: null,
+    catalogError,
 
-    /* -----------------------------------------------------
-       ORDER ITEMS
-    ----------------------------------------------------- */
+    /* ORDER ITEMS */
 
     selectedItems,
 
@@ -460,17 +467,11 @@ export function useCreateOrder(onClose: () => void) {
 
     removeItem,
 
-    /* -----------------------------------------------------
-       STEPS
-    ----------------------------------------------------- */
+    /* STEPS */
 
     goToItemsStep,
 
     goBack,
-
-    /* -----------------------------------------------------
-       ORDER
-    ----------------------------------------------------- */
 
     submitOrder,
 
