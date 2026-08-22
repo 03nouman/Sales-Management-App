@@ -75,7 +75,14 @@ export function CreateOrderModal({ isOpen, onClose }: Props) {
               Step {order.step} of 2
             </p>
 
-            <h2 className="mt-1 text-lg font-bold text-slate-900">
+            <h2
+              className="
+                mt-1
+                text-lg
+                font-bold
+                text-slate-900
+              "
+            >
               Create New Order
             </h2>
           </div>
@@ -93,9 +100,6 @@ export function CreateOrderModal({ isOpen, onClose }: Props) {
               text-slate-600
               transition
               hover:bg-slate-100
-              focus:outline-none
-              focus:ring-2
-              focus:ring-[#263c93]/20
             "
           >
             <X size={18} />
@@ -106,74 +110,33 @@ export function CreateOrderModal({ isOpen, onClose }: Props) {
             CONTENT
         ================================================== */}
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-5">
+        <div
+          className="
+            min-h-0
+            flex-1
+            overflow-y-auto
+            p-5
+          "
+        >
           {/* =================================================
-              CATALOG ERROR
-          ================================================== */}
-
-          {order.catalogError && (
-            <div
-              role="alert"
-              className="
-                mb-5
-                rounded-xl
-                border
-                border-red-200
-                bg-red-50
-                px-4
-                py-3
-                text-sm
-                text-red-700
-              "
-            >
-              {order.catalogError}
-            </div>
-          )}
-
-          {/* =================================================
-              LOCAL DATA LOADING
-              
-              This is Redux/localStorage loading only.
-              There is NO API request here.
-          ================================================== */}
-
-          {order.isCatalogLoading && (
-            <div
-              className="
-                mb-5
-                rounded-xl
-                border
-                border-slate-200
-                bg-slate-50
-                px-4
-                py-3
-                text-sm
-                text-slate-500
-              "
-            >
-              Loading catalog...
-            </div>
-          )}
-
-          {/* =================================================
-              STEP 1 — CUSTOMER
+              STEP 1
           ================================================== */}
 
           {order.step === 1 && (
             <CustomerStep
-              form={order.form}
-              customers={order.customers}
+              customer={order.customer}
               selectedCustomer={order.selectedCustomer}
               customerMode={order.customerMode}
               onCustomerModeChange={order.setCustomerMode}
               onSelectCustomer={order.selectCustomer}
               onCreateCustomer={order.createCustomer}
+              onChangeCustomer={order.clearCustomerSelection}
               onNext={order.goToItemsStep}
             />
           )}
 
           {/* =================================================
-              STEP 2 — PRODUCTS
+              STEP 2
           ================================================== */}
 
           {order.step === 2 && (

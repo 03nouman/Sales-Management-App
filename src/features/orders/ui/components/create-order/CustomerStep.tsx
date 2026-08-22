@@ -1,28 +1,22 @@
-import { useEffect, useId, useMemo, useRef, useState } from "react";
-
-import { ChevronDown, Check, Search, UserPlus } from "lucide-react";
-
-import type { UseFormReturn } from "react-hook-form";
+import { Check, ChevronDown, Search, UserPlus } from "lucide-react";
 
 import type {
   Customer,
-  CreateCustomerPayload,
   CustomerTier,
 } from "../../../../customers/types/customer.types";
 
-import type {
-  CustomerMode,
-  CreateOrderFormValues,
-} from "../../../hooks/useCreateOrder";
+import type { CustomerMode } from "../../../../customers/types/customerMode.types";
+
+import type { useCustomer } from "../../../../customers/hooks/useCustomer";
 
 /* =========================================================
    PROPS
 ========================================================= */
 
-type Props = {
-  form: UseFormReturn<CreateOrderFormValues>;
+type CustomerController = ReturnType<typeof useCustomer>;
 
-  customers: Customer[];
+type Props = {
+  customer: CustomerController;
 
   selectedCustomer: Customer | null;
 
@@ -32,21 +26,11 @@ type Props = {
 
   onSelectCustomer: (customerId: number) => void;
 
-  onCreateCustomer: (data: CreateCustomerPayload) => Customer;
+  onCreateCustomer: () => Customer | null;
 
-  onNext: () => void | Promise<void>;
-};
+  onChangeCustomer: () => void;
 
-/* =========================================================
-   NEW CUSTOMER FORM
-========================================================= */
-
-type NewCustomerFormValues = {
-  name: string;
-  phone: string;
-  email: string;
-  address: string;
-  tier: CustomerTier;
+  onNext: () => void;
 };
 
 /* =========================================================
@@ -54,224 +38,39 @@ type NewCustomerFormValues = {
 ========================================================= */
 
 export function CustomerStep({
-  form,
-  customers,
+  customer,
   selectedCustomer,
   customerMode,
   onCustomerModeChange,
   onSelectCustomer,
   onCreateCustomer,
+  onChangeCustomer,
   onNext,
 }: Props) {
-  /* =======================================================
-     IDS
-  ======================================================= */
+  const {
+    searchId,
+    searchTerm,
+    isSearchOpen,
+    highlightedIndex,
+    filteredCustomers,
+    searchContainerRef,
+    setSearchTerm,
+    openCustomerSearch,
+    handleSearchKeyDown,
 
-  const searchId = useId();
-
-  /* =======================================================
-     EXISTING CUSTOMER SEARCH STATE
-  ======================================================= */
-
-  const [searchTerm, setSearchTerm] = useState("");
-
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-
-  const [highlightedIndex, setHighlightedIndex] = useState(-1);
-
-  const searchContainerRef = useRef<HTMLDivElement | null>(null);
-
-  /* =======================================================
-     NEW CUSTOMER STATE
-  ======================================================= */
-
-  const [newCustomer, setNewCustomer] = useState<NewCustomerFormValues>({
-    name: "",
-    phone: "",
-    email: "",
-    address: "",
-    tier: "Regular",
-  });
-
-  const [newCustomerError, setNewCustomerError] = useState<string | null>(null);
-
-  const [createdCustomer, setCreatedCustomer] = useState<Customer | null>(null);
-
-  /* =======================================================
-     SELECTED CUSTOMER FROM FORM
-  ======================================================= */
-
-  const selectedCustomerId = form.watch("customerId");
-
-  /* =======================================================
-     FILTER CUSTOMERS
-     
-     Search by:
-       - Name
-       - Phone
-       - Email
-  ======================================================= */
-
-  const filteredCustomers = useMemo(() => {
-    const normalizedSearch = searchTerm.trim().toLowerCase();
-
-    if (!normalizedSearch) {
-      return customers;
-    }
-
-    return customers.filter((customer) => {
-      const name = customer.name?.toLowerCase() ?? "";
-
-      const phone = customer.phone?.toLowerCase() ?? "";
-
-      const email = customer.email?.toLowerCase() ?? "";
-
-      return (
-        name.includes(normalizedSearch) ||
-        phone.includes(normalizedSearch) ||
-        email.includes(normalizedSearch)
-      );
-    });
-  }, [customers, searchTerm]);
-
-  /* =======================================================
-     RESET HIGHLIGHT WHEN SEARCH RESULTS CHANGE
-  ======================================================= */
-
-  useEffect(() => {
-    if (filteredCustomers.length === 0) {
-      setHighlightedIndex(-1);
-      return;
-    }
-
-    setHighlightedIndex(0);
-  }, [filteredCustomers]);
-
-  /* =======================================================
-     CLOSE SEARCH WHEN CLICKING OUTSIDE
-  ======================================================= */
-
-  useEffect(() => {
-    const handlePointerDown = (event: PointerEvent) => {
-      if (!searchContainerRef.current) {
-        return;
-      }
-
-      if (!searchContainerRef.current.contains(event.target as Node)) {
-        setIsSearchOpen(false);
-      }
-    };
-
-    document.addEventListener("pointerdown", handlePointerDown);
-
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-    };
-  }, []);
+    newCustomer,
+    updateNewCustomer,
+    newCustomerError,
+    createdCustomer,
+    createAnotherCustomer,
+  } = customer;
 
   /* =======================================================
      SELECT CUSTOMER
   ======================================================= */
 
-  const handleSelectCustomer = (customer: Customer) => {
-    onSelectCustomer(customer.id);
-    setSearchTerm("");
-    setIsSearchOpen(false);
-    setHighlightedIndex(-1);
-    setCreatedCustomer(null);
-  };
-
-  /* =======================================================
-     SEARCH KEYBOARD NAVIGATION
-     
-     ↑ ArrowUp
-     ↓ ArrowDown
-     Enter
-     Escape
-  ======================================================= */
-
-  const handleSearchKeyDown = (
-    event: React.KeyboardEvent<HTMLInputElement>,
-  ) => {
-    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-      event.preventDefault();
-
-      if (!isSearchOpen) {
-        setIsSearchOpen(true);
-
-        if (filteredCustomers.length > 0) {
-          setHighlightedIndex(
-            event.key === "ArrowDown" ? 0 : filteredCustomers.length - 1,
-          );
-        }
-
-        return;
-      }
-
-      if (filteredCustomers.length === 0) {
-        return;
-      }
-
-      setHighlightedIndex((currentIndex) => {
-        if (event.key === "ArrowDown") {
-          if (currentIndex >= filteredCustomers.length - 1) {
-            return 0;
-          }
-
-          return currentIndex + 1;
-        }
-
-        if (currentIndex <= 0) {
-          return filteredCustomers.length - 1;
-        }
-
-        return currentIndex - 1;
-      });
-
-      return;
-    }
-
-    if (event.key === "Enter") {
-      event.preventDefault();
-
-      if (
-        isSearchOpen &&
-        highlightedIndex >= 0 &&
-        highlightedIndex < filteredCustomers.length
-      ) {
-        handleSelectCustomer(filteredCustomers[highlightedIndex]);
-      }
-
-      return;
-    }
-
-    if (event.key === "Escape") {
-      event.preventDefault();
-
-      setIsSearchOpen(false);
-
-      setHighlightedIndex(-1);
-    }
-  };
-
-  /* =======================================================
-     CUSTOMER MODE CHANGE
-  ======================================================= */
-
-  const handleCustomerModeChange = (mode: CustomerMode) => {
-    setNewCustomerError(null);
-
-    setSearchTerm("");
-
-    setIsSearchOpen(false);
-
-    setHighlightedIndex(-1);
-
-    if (mode === "existing") {
-      setCreatedCustomer(null);
-    }
-
-    onCustomerModeChange(mode);
+  const handleSelectCustomer = (customerId: number) => {
+    onSelectCustomer(customerId);
   };
 
   /* =======================================================
@@ -279,135 +78,49 @@ export function CustomerStep({
   ======================================================= */
 
   const handleCreateCustomer = () => {
-    setNewCustomerError(null);
-
-    const name = newCustomer.name.trim();
-
-    const phone = newCustomer.phone.trim();
-
-    const email = newCustomer.email.trim();
-
-    const address = newCustomer.address.trim();
-
-    /* -----------------------------------------------
-       VALIDATION
-    ------------------------------------------------ */
-
-    if (!name) {
-      setNewCustomerError("Customer name is required.");
-
-      return;
-    }
-
-    if (!phone) {
-      setNewCustomerError("Customer phone is required.");
-
-      return;
-    }
-
-    /* -----------------------------------------------
-       DUPLICATE PHONE
-    ------------------------------------------------ */
-
-    const existingCustomer = customers.find(
-      (customer) => customer.phone.trim() === phone,
-    );
-
-    if (existingCustomer) {
-      setNewCustomerError(
-        "A customer with this phone number already exists. Please use the existing customer.",
-      );
-
-      return;
-    }
-
-    /* -----------------------------------------------
-       PAYLOAD
-    ------------------------------------------------ */
-
-    const payload: CreateCustomerPayload = {
-      name,
-      phone,
-      email: email || undefined,
-      address: address || undefined,
-      tier: newCustomer.tier,
-    };
-
-    try {
-      const customer = onCreateCustomer(payload);
-
-      /*
-       * Keep new mode active.
-       *
-       * The form disappears because createdCustomer
-       * now exists.
-       */
-
-      setCreatedCustomer(customer);
-
-      /* ---------------------------------------------
-         CLEAR FORM
-      --------------------------------------------- */
-
-      setNewCustomer({
-        name: "",
-        phone: "",
-        email: "",
-        address: "",
-        tier: "Regular",
-      });
-    } catch (error) {
-      setNewCustomerError(
-        error instanceof Error ? error.message : "Unable to create customer.",
-      );
-    }
-  };
-
-  /* =======================================================
-     CHANGE CUSTOMER AFTER CREATION
-  ======================================================= */
-
-  const handleCreateAnotherCustomer = () => {
-    setCreatedCustomer(null);
-
-    setNewCustomerError(null);
+    onCreateCustomer();
   };
 
   /* =======================================================
      CONTINUE
   ======================================================= */
 
-  const handleContinue = async () => {
-    await onNext();
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    onNext();
   };
 
-  /* =======================================================
-     RENDER
-  ======================================================= */
-
   return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault();
-
-        void handleContinue();
-      }}
-      className="space-y-6"
-    >
+    <form onSubmit={handleSubmit} className="space-y-6">
       {/* ===================================================
           HEADER
       ==================================================== */}
 
       <section>
-        <h3 className="text-base font-bold text-slate-900">Customer Details</h3>
+        <h3
+          className="
+            text-base
+            font-bold
+            text-slate-900
+          "
+        >
+          Customer Details
+        </h3>
 
-        <p className="mt-1 text-xs text-slate-500">
+        <p
+          className="
+            mt-1
+            text-xs
+            text-slate-500
+          "
+        >
           Select an existing customer or create a new customer for this order.
         </p>
       </section>
 
       {/* ===================================================
-          MODE SWITCH
+          CUSTOMER MODE
       ==================================================== */}
 
       <div
@@ -427,7 +140,7 @@ export function CustomerStep({
           type="button"
           role="tab"
           aria-selected={customerMode === "existing"}
-          onClick={() => handleCustomerModeChange("existing")}
+          onClick={() => onCustomerModeChange("existing")}
           className={`
             rounded-lg
             px-4
@@ -449,7 +162,7 @@ export function CustomerStep({
           type="button"
           role="tab"
           aria-selected={customerMode === "new"}
-          onClick={() => handleCustomerModeChange("new")}
+          onClick={() => onCustomerModeChange("new")}
           className={`
             flex
             items-center
@@ -521,43 +234,15 @@ export function CustomerStep({
                     ? `${searchId}-option-${highlightedIndex}`
                     : undefined
                 }
-                value={
-                  isSearchOpen
-                    ? searchTerm
-                    : selectedCustomer
-                      ? `${selectedCustomer.name}${
-                          selectedCustomer.phone
-                            ? ` — ${selectedCustomer.phone}`
-                            : ""
-                        }`
-                      : searchTerm
-                }
-                onChange={(event) => {
-                  setSearchTerm(event.target.value);
-
-                  setIsSearchOpen(true);
-
-                  setHighlightedIndex(0);
-
-                  /*
-                   * If user starts searching after
-                   * having selected a customer, don't
-                   * immediately change the selected
-                   * customer.
-                   *
-                   * Selection happens only after
-                   * choosing a result.
-                   */
-                }}
-                onFocus={() => {
-                  setIsSearchOpen(true);
-
-                  if (filteredCustomers.length > 0) {
-                    setHighlightedIndex(0);
-                  }
-                }}
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                onFocus={openCustomerSearch}
                 onKeyDown={handleSearchKeyDown}
-                placeholder="Search by name or phone..."
+                placeholder={
+                  selectedCustomer
+                    ? `${selectedCustomer.name} — ${selectedCustomer.phone}`
+                    : "Search by name or phone..."
+                }
                 className="
                   h-11
                   w-full
@@ -629,28 +314,23 @@ export function CustomerStep({
                     No customers found.
                   </div>
                 ) : (
-                  filteredCustomers.map((customer, index) => {
+                  filteredCustomers.map((currentCustomer, index) => {
                     const isHighlighted = index === highlightedIndex;
 
-                    const isSelected = customer.id === selectedCustomerId;
+                    const isSelected =
+                      currentCustomer.id === customer.selectedCustomerId;
 
                     return (
                       <button
-                        key={customer.id}
+                        key={currentCustomer.id}
                         id={`${searchId}-option-${index}`}
                         type="button"
                         role="option"
                         aria-selected={isSelected}
                         onMouseDown={(event) => {
-                          /*
-                           * Prevent input blur before
-                           * the selection is processed.
-                           */
-
                           event.preventDefault();
                         }}
-                        onClick={() => handleSelectCustomer(customer)}
-                        onMouseEnter={() => setHighlightedIndex(index)}
+                        onClick={() => handleSelectCustomer(currentCustomer.id)}
                         className={`
                             flex
                             w-full
@@ -677,7 +357,7 @@ export function CustomerStep({
                                 text-slate-800
                               "
                           >
-                            {customer.name}
+                            {currentCustomer.name}
                           </p>
 
                           <p
@@ -688,9 +368,11 @@ export function CustomerStep({
                                 text-slate-500
                               "
                           >
-                            {customer.phone}
+                            {currentCustomer.phone}
 
-                            {customer.email ? ` • ${customer.email}` : ""}
+                            {currentCustomer.email
+                              ? ` • ${currentCustomer.email}`
+                              : ""}
                           </p>
                         </div>
 
@@ -712,7 +394,7 @@ export function CustomerStep({
           </div>
 
           {/* -------------------------------------------
-              SELECTED CUSTOMER PREVIEW
+              SELECTED CUSTOMER
           -------------------------------------------- */}
 
           {selectedCustomer && (
@@ -740,7 +422,14 @@ export function CustomerStep({
                     Selected Customer
                   </p>
 
-                  <p className="mt-2 text-sm font-bold text-slate-900">
+                  <p
+                    className="
+                      mt-2
+                      text-sm
+                      font-bold
+                      text-slate-900
+                    "
+                  >
                     {selectedCustomer.name}
                   </p>
 
@@ -776,18 +465,7 @@ export function CustomerStep({
 
                 <button
                   type="button"
-                  onClick={() => {
-                    form.setValue("customerId", null, {
-                      shouldValidate: false,
-                      shouldDirty: true,
-                    });
-
-                    setSearchTerm("");
-
-                    setIsSearchOpen(true);
-
-                    setHighlightedIndex(filteredCustomers.length > 0 ? 0 : -1);
-                  }}
+                  onClick={onChangeCustomer}
                   className="
                     shrink-0
                     text-xs
@@ -838,7 +516,14 @@ export function CustomerStep({
                     Customer Created
                   </p>
 
-                  <p className="mt-2 text-sm font-bold text-slate-900">
+                  <p
+                    className="
+                      mt-2
+                      text-sm
+                      font-bold
+                      text-slate-900
+                    "
+                  >
                     {createdCustomer.name}
                   </p>
 
@@ -879,10 +564,10 @@ export function CustomerStep({
                 />
               </div>
 
-              <div className="mt-4 flex gap-3">
+              <div className="mt-4">
                 <button
                   type="button"
-                  onClick={handleCreateAnotherCustomer}
+                  onClick={createAnotherCustomer}
                   className="
                     rounded-xl
                     border
@@ -916,11 +601,23 @@ export function CustomerStep({
               "
             >
               <div>
-                <h4 className="text-sm font-bold text-slate-900">
+                <h4
+                  className="
+                    text-sm
+                    font-bold
+                    text-slate-900
+                  "
+                >
                   Create New Customer
                 </h4>
 
-                <p className="mt-1 text-xs text-slate-500">
+                <p
+                  className="
+                    mt-1
+                    text-xs
+                    text-slate-500
+                  "
+                >
                   Customer details will be saved locally and available for
                   future orders.
                 </p>
@@ -930,7 +627,15 @@ export function CustomerStep({
                   FIELDS
               ---------------------------------------- */}
 
-              <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div
+                className="
+                  mt-5
+                  grid
+                  grid-cols-1
+                  gap-4
+                  sm:grid-cols-2
+                "
+              >
                 {/* NAME */}
 
                 <div>
@@ -952,10 +657,7 @@ export function CustomerStep({
                     type="text"
                     value={newCustomer.name}
                     onChange={(event) =>
-                      setNewCustomer((current) => ({
-                        ...current,
-                        name: event.target.value,
-                      }))
+                      updateNewCustomer("name", event.target.value)
                     }
                     placeholder="Customer name"
                     className="
@@ -997,10 +699,7 @@ export function CustomerStep({
                     type="tel"
                     value={newCustomer.phone}
                     onChange={(event) =>
-                      setNewCustomer((current) => ({
-                        ...current,
-                        phone: event.target.value,
-                      }))
+                      updateNewCustomer("phone", event.target.value)
                     }
                     placeholder="Phone number"
                     className="
@@ -1042,10 +741,7 @@ export function CustomerStep({
                     type="email"
                     value={newCustomer.email}
                     onChange={(event) =>
-                      setNewCustomer((current) => ({
-                        ...current,
-                        email: event.target.value,
-                      }))
+                      updateNewCustomer("email", event.target.value)
                     }
                     placeholder="Email address"
                     className="
@@ -1086,10 +782,10 @@ export function CustomerStep({
                     id="new-customer-tier"
                     value={newCustomer.tier}
                     onChange={(event) =>
-                      setNewCustomer((current) => ({
-                        ...current,
-                        tier: event.target.value as CustomerTier,
-                      }))
+                      updateNewCustomer(
+                        "tier",
+                        event.target.value as CustomerTier,
+                      )
                     }
                     className="
                       h-11
@@ -1135,10 +831,7 @@ export function CustomerStep({
                     id="new-customer-address"
                     value={newCustomer.address}
                     onChange={(event) =>
-                      setNewCustomer((current) => ({
-                        ...current,
-                        address: event.target.value,
-                      }))
+                      updateNewCustomer("address", event.target.value)
                     }
                     placeholder="Customer address"
                     rows={3}
@@ -1186,7 +879,7 @@ export function CustomerStep({
               )}
 
               {/* ---------------------------------------
-                  CREATE BUTTON
+                  CREATE
               ---------------------------------------- */}
 
               <button
